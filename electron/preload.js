@@ -1,0 +1,32 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  login: (credentials) => ipcRenderer.invoke('auth:login', credentials),
+  restoreSession: () => ipcRenderer.invoke('auth:restore'),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+
+  listTasks: () => ipcRenderer.invoke('tasks:list'),
+  listOverdueTasks: () => ipcRenderer.invoke('tasks:overdue'),
+  openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
+  getProductivity: () => ipcRenderer.invoke('stats:productivity'),
+
+  listTickets: () => ipcRenderer.invoke('tickets:list'),
+  openTicketInOdoo: (ticketId) => ipcRenderer.invoke('tickets:open', ticketId),
+
+  getTimerState: () => ipcRenderer.invoke('timer:state'),
+  startTimer: (item, kind) => ipcRenderer.invoke('timer:start', item, kind),
+  stopTimer: (payload) => ipcRenderer.invoke('timer:stop', payload),
+  discardTimer: () => ipcRenderer.invoke('timer:discard'),
+
+  getAttendanceStatus: () => ipcRenderer.invoke('attendance:status'),
+  toggleAttendance: () => ipcRenderer.invoke('attendance:toggle'),
+
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
+
+  onOverdueUpdate: (callback) => {
+    const listener = (_event, tasks) => callback(tasks);
+    ipcRenderer.on('overdue:update', listener);
+    return () => ipcRenderer.removeListener('overdue:update', listener);
+  },
+});
