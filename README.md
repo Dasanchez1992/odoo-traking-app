@@ -15,6 +15,11 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 
 ## Comportamiento de la aplicación
 
+- **Miniatura flotante:** al minimizar la ventana (o cerrarla a la bandeja) con un cronómetro en
+  marcha, aparece una ventanita siempre visible sobre las demás aplicaciones, con el tiempo, un botón
+  para detener y registrar y otro para volver a la app. Se arrastra desde su franja superior.
+- **Solo trabajo abierto:** las tareas cerradas (`state` en `1_done` / `1_canceled`) y los tickets con
+  fecha de cierre o en etapa plegada no se consultan. Además hay filtros por etapa en ambas listas.
 - **Bandeja del sistema:** cerrar la ventana solo la oculta; la app sigue corriendo para poder emitir
   los recordatorios de fichaje. Para cerrarla del todo se usa «Salir» en el menú de la bandeja.
 - **Recordatorios:** se omiten si el fichaje correspondiente ya está hecho (no avisa de entrada si ya

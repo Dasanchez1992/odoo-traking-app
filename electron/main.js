@@ -1,5 +1,15 @@
-const { app, BrowserWindow, ipcMain, Menu, Notification, Tray, nativeImage, session, shell } =
-  require('electron');
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  Notification,
+  Tray,
+  nativeImage,
+  screen,
+  session,
+  shell,
+} = require('electron');
 const path = require('path');
 
 const odooClient = require('./odooClient');
@@ -14,6 +24,7 @@ const OVERDUE_POLL_MS = 5 * 60 * 1000;
 const APP_ID = 'com.elipsys.elideysi';
 
 let mainWindow = null;
+let miniWindow = null;
 let tray = null;
 let client = null;
 let overduePollTimer = null;
@@ -60,6 +71,13 @@ function createWindow() {
     if (!startedHidden) mainWindow.show();
   });
 
+  // La miniatura solo aparece cuando la ventana principal no está a la vista.
+  mainWindow.on('minimize', showMiniWindow);
+  mainWindow.on('hide', showMiniWindow);
+  mainWindow.on('restore', hideMiniWindow);
+  mainWindow.on('show', hideMiniWindow);
+  mainWindow.on('focus', hideMiniWindow);
+
   // Cerrar la ventana solo la oculta: la app sigue en la bandeja para poder recordar los fichajes.
   // Sin bandeja disponible se cierra de verdad, para no dejarla inaccesible.
   mainWindow.on('close', (event) => {
@@ -67,6 +85,60 @@ function createWindow() {
     event.preventDefault();
     mainWindow.hide();
   });
+}
+
+// Miniatura flotante: acompaña al usuario mientras trabaja en otras ventanas.
+function createMiniWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const winWidth = 290;
+  const winHeight = 96;
+
+  miniWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: width - winWidth - 24,
+    y: height - winHeight - 24,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: true,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    backgroundColor: '#111827',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  // Por encima incluso de ventanas a pantalla completa.
+  miniWindow.setAlwaysOnTop(true, 'screen-saver');
+  miniWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+  const startUrl = process.env.ELECTRON_START_URL;
+  if (startUrl) {
+    miniWindow.loadURL(`${startUrl}?widget=1`);
+  } else {
+    miniWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { search: 'widget=1' });
+  }
+
+  miniWindow.on('closed', () => {
+    miniWindow = null;
+  });
+}
+
+function showMiniWindow() {
+  if (!timerState) return;
+  if (!miniWindow || miniWindow.isDestroyed()) createMiniWindow();
+  miniWindow.showInactive();
+}
+
+function hideMiniWindow() {
+  if (miniWindow && !miniWindow.isDestroyed() && miniWindow.isVisible()) miniWindow.hide();
 }
 
 function createTray() {
@@ -287,6 +359,7 @@ ipcMain.handle('timer:stop', async (_event, { description, stoppedAt } = {}) => 
   const finished = { ...timerState, stoppedAt: validStop, description };
   stopInFlight = true;
   try {
+    hideMiniWindow();
     const record =
       finished.kind === 'ticket'
         ? await odooService.logTicketTimesheet(requireClient(), {
@@ -304,6 +377,22 @@ ipcMain.handle('timer:stop', async (_event, { description, stoppedAt } = {}) => 
 
 ipcMain.handle('timer:discard', async () => {
   timerState = null;
+  hideMiniWindow();
+  return true;
+});
+
+ipcMain.handle('mini:show-main', async () => {
+  hideMiniWindow();
+  showWindow();
+  return true;
+});
+
+ipcMain.handle('mini:request-stop', async () => {
+  hideMiniWindow();
+  showWindow();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('timer:stop-requested');
+  }
   return true;
 });
 

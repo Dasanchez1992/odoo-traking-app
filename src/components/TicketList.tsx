@@ -16,6 +16,7 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState('all');
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const now = useNow(timer !== null && frozenAt === null);
@@ -29,18 +30,29 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
       .finally(() => setLoading(false));
   }, []);
 
+  const stages = useMemo(() => {
+    const map = new Map<number, string>();
+    (result?.tickets ?? []).forEach((t) => {
+      if (t.stage_id) map.set(t.stage_id[0], t.stage_id[1]);
+    });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
+  }, [result]);
+
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!result) return [];
-    if (!query) return result.tickets;
-    return result.tickets.filter((t) =>
-      `${t.ticket_ref || ''} ${t.name} ${t.partner_id ? t.partner_id[1] : ''} ${
+    return (result?.tickets ?? []).filter((t) => {
+      if (stageFilter !== 'all') {
+        const stageId = t.stage_id ? t.stage_id[0] : null;
+        if (String(stageId) !== stageFilter) return false;
+      }
+      if (!query) return true;
+      return `${t.ticket_ref || ''} ${t.name} ${t.partner_id ? t.partner_id[1] : ''} ${
         t.team_id ? t.team_id[1] : ''
       }`
         .toLowerCase()
-        .includes(query),
-    );
-  }, [result, search]);
+        .includes(query);
+    });
+  }, [result, search, stageFilter]);
 
   async function handleStart(ticket: OdooTicket) {
     setError(null);
@@ -99,6 +111,19 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
             aria-label="Buscar tickets"
           />
         </div>
+
+        <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+          aria-label="Filtrar por etapa"
+        >
+          <option value="all">Todas las etapas</option>
+          {stages.map(([id, name]) => (
+            <option key={id} value={String(id)}>
+              {name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {visible.length === 0 ? (
@@ -106,11 +131,13 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
           <span className="empty-state-icon">
             {search ? <IconSearch size={20} /> : <IconTasks size={20} />}
           </span>
-          <strong>{search ? 'Sin resultados' : 'No tienes tickets asignados'}</strong>
+          <strong>
+            {search || stageFilter !== 'all' ? 'Sin resultados' : 'No tienes tickets abiertos'}
+          </strong>
           <span>
-            {search
-              ? 'Ningún ticket coincide con la búsqueda.'
-              : 'Los tickets de asistencia asignados a ti aparecerán aquí.'}
+            {search || stageFilter !== 'all'
+              ? 'Ningún ticket coincide con los filtros.'
+              : 'Los tickets de asistencia abiertos a tu nombre aparecerán aquí.'}
           </span>
         </div>
       ) : (

@@ -1578,6 +1578,106 @@ select:focus {
 }
 
 /* ============================================================
+   Miniatura flotante
+   ============================================================ */
+.mini {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(150deg, #1e3a8a 0%, #111d3d 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Franja superior para arrastrar la ventana sin marco. */
+.mini-drag {
+  height: 16px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.mini-drag::after {
+  content: '';
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin: 6px auto 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.mini-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 10px;
+  min-width: 0;
+}
+
+.mini-info {
+  min-width: 0;
+}
+
+.mini-task {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 1px;
+}
+
+.mini-clock {
+  font-family: var(--font-mono);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.mini-actions {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.mini-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
+.mini-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.mini-btn.is-stop {
+  background: var(--danger-solid);
+  border-color: transparent;
+}
+
+.mini-btn.is-stop:hover:not(:disabled) {
+  background: var(--danger-solid-hover);
+}
+
+.mini-idle {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================
    Modal
    ============================================================ */
 .modal-overlay {

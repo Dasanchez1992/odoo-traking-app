@@ -6,6 +6,9 @@ interface Props {
   projectFilter: string;
   onProjectFilterChange: (value: string) => void;
   projects: Array<[number, string]>;
+  stages: Array<[number, string]>;
+  stageFilter: string;
+  onStageFilterChange: (value: string) => void;
   oldOverdueCount: number;
   showOldOverdue: boolean;
   onToggleOldOverdue: () => void;
@@ -20,6 +23,9 @@ export default function TaskFilters({
   projectFilter,
   onProjectFilterChange,
   projects,
+  stages,
+  stageFilter,
+  onStageFilterChange,
   oldOverdueCount,
   showOldOverdue,
   onToggleOldOverdue,
@@ -47,6 +53,19 @@ export default function TaskFilters({
       >
         <option value="all">Todos los proyectos</option>
         {projects.map(([id, name]) => (
+          <option key={id} value={String(id)}>
+            {name}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={stageFilter}
+        onChange={(e) => onStageFilterChange(e.target.value)}
+        aria-label="Filtrar por etapa"
+      >
+        <option value="all">Todas las etapas</option>
+        {stages.map(([id, name]) => (
           <option key={id} value={String(id)}>
             {name}
           </option>

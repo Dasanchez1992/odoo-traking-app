@@ -24,6 +24,15 @@ contextBridge.exposeInMainWorld('api', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
 
+  showMainWindow: () => ipcRenderer.invoke('mini:show-main'),
+  requestStopFromMini: () => ipcRenderer.invoke('mini:request-stop'),
+
+  onStopRequested: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('timer:stop-requested', listener);
+    return () => ipcRenderer.removeListener('timer:stop-requested', listener);
+  },
+
   onOverdueUpdate: (callback) => {
     const listener = (_event, tasks) => callback(tasks);
     ipcRenderer.on('overdue:update', listener);
