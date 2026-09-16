@@ -45,6 +45,40 @@ npm run dev
 
 Levanta Vite en `http://localhost:5173` y abre la ventana de Electron apuntando ahí, con recarga en caliente.
 
+## Ramas y publicación
+
+- **`develop`**: rama de trabajo. Cada push y cada PR ejecuta CI (tipos, sintaxis del proceso
+  principal y compilación de la interfaz).
+- **`main`**: rama estable. Los PR hacia `main` ejecutan además el empaquetado de Windows y dejan el
+  instalador como artefacto descargable, para poder probarlo antes de liberar.
+- **Releases**: se publican por etiqueta de versión, no por cada PR. Para liberar una versión:
+
+  ```bash
+  npm version patch        # o minor / major: actualiza package.json y crea el commit
+  git push origin main --follow-tags
+  ```
+
+  El workflow `Publicar release de Windows` compila el instalador, crea el Release en GitHub y sube
+  el `.exe` junto con `latest.yml`. También se puede lanzar a mano desde la pestaña Actions.
+
+  El workflow verifica que la etiqueta coincida con la versión de `package.json` y falla si no, para
+  evitar releases con numeración inconsistente.
+
+## Actualización automática
+
+La app usa `electron-updater`: al abrirse (y cada 4 horas) consulta los Releases de GitHub, descarga
+la versión nueva en segundo plano y ofrece reiniciar para instalarla. Solo funciona en la app
+empaquetada, no en desarrollo.
+
+> **Importante:** si el repositorio es privado, la actualización automática desde GitHub Releases
+> requiere un token de acceso incrustado en la app, lo que no es recomendable. Con repositorio
+> privado, las opciones son publicar los instaladores en un repositorio público aparte, en un
+> servidor propio (o S3), o distribuirlos a mano.
+
+> **Firma de código:** los instaladores no están firmados, así que Windows SmartScreen mostrará un
+> aviso al instalar. Para evitarlo hace falta un certificado de firma de código (EV o estándar) y
+> configurarlo en electron-builder.
+
 ## Build de producción
 
 ```bash

@@ -8,6 +8,7 @@ const sessionStore = require('./sessionStore');
 const settingsStore = require('./settingsStore');
 const { formatOdooDateTime } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
+const { setupAutoUpdater } = require('./updater');
 
 const OVERDUE_POLL_MS = 5 * 60 * 1000;
 const APP_ID = 'com.elipsys.elideysi';
@@ -355,6 +356,7 @@ if (!gotLock) {
 
     createWindow();
     createTray();
+    setupAutoUpdater({ onNotify: notify });
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

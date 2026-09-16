@@ -1,0 +1,48 @@
+name: Publicar release de Windows
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    name: Construir y publicar instalador
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar que la etiqueta coincide con la versión de package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          etiqueta="${GITHUB_REF_NAME#v}"
+          version=$(node -p "require('./package.json').version")
+          if [ "$etiqueta" != "$version" ]; then
+            echo "La etiqueta $GITHUB_REF_NAME no coincide con la versión $version de package.json."
+            echo "Actualiza la versión (npm version) antes de etiquetar."
+            exit 1
+          fi
+
+      - name: Revisar tipos de TypeScript
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Compilar la interfaz
+        run: npm run build
+
+      # electron-builder crea el Release y sube el .exe junto con latest.yml,
+      # que es el archivo que usa electron-updater para detectar versiones nuevas.
+      - name: Construir y publicar en GitHub Releases
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

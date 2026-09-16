@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  verificar:
+    name: Tipos y compilación
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Revisar tipos de TypeScript
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Revisar sintaxis del proceso principal
+        run: for f in electron/*.js; do node --check "$f"; done
+
+      - name: Compilar la interfaz
+        run: npm run build
+
+  empaquetado:
+    name: Empaquetado de Windows
+    runs-on: windows-latest
+    # Solo en PRs hacia main: confirma que el instalador se genera antes de liberar.
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar la interfaz
+        run: npm run build
+
+      - name: Construir el instalador (sin publicar)
+        run: npx electron-builder --win --publish never
+
+      - name: Guardar el instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: elideysi-instalador-pr${{ github.event.number }}
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 14
