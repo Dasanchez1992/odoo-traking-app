@@ -42,6 +42,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
+  const [stageFilter, setStageFilter] = useState('all');
   const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showNoProject, setShowNoProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -82,8 +83,13 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   useEffect(() => {
     loadAll();
     const unsubscribe = window.api.onOverdueUpdate(setOverdueTasks);
+    // Detener desde la miniatura flotante abre aquí el diálogo de descripción.
+    const unsubscribeStop = window.api.onStopRequested(() => setStopRequestedAt(Date.now()));
     window.api.listOverdueTasks().then(setOverdueTasks).catch(() => {});
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      unsubscribeStop();
+    };
   }, []);
 
   const overdueCount = useMemo(() => {
@@ -96,6 +102,14 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     const map = new Map<number, string>();
     tasks.forEach((t) => {
       if (t.project_id) map.set(t.project_id[0], t.project_id[1]);
+    });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
+  }, [tasks]);
+
+  const stages = useMemo(() => {
+    const map = new Map<number, string>();
+    tasks.forEach((t) => {
+      if (t.stage_id) map.set(t.stage_id[0], t.stage_id[1]);
     });
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
   }, [tasks]);
@@ -116,6 +130,11 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
         if (String(projectId) !== projectFilter) return false;
       }
 
+      if (stageFilter !== 'all') {
+        const stageId = task.stage_id ? task.stage_id[0] : null;
+        if (String(stageId) !== stageFilter) return false;
+      }
+
       if (query) {
         const haystack = `${task.name} ${task.project_id ? task.project_id[1] : ''}`.toLowerCase();
         if (!haystack.includes(query)) return false;
@@ -123,7 +142,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
       return true;
     });
-  }, [tasks, search, projectFilter, showOldOverdue, showNoProject]);
+  }, [tasks, search, projectFilter, stageFilter, showOldOverdue, showNoProject]);
 
   const isFiltered = visibleTasks.length !== tasks.length;
 
@@ -305,6 +324,9 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 projectFilter={projectFilter}
                 onProjectFilterChange={setProjectFilter}
                 projects={projects}
+                stages={stages}
+                stageFilter={stageFilter}
+                onStageFilterChange={setStageFilter}
                 oldOverdueCount={oldOverdueCount}
                 showOldOverdue={showOldOverdue}
                 onToggleOldOverdue={() => setShowOldOverdue((v) => !v)}
@@ -320,7 +342,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 onRequestStop={() => setStopRequestedAt(Date.now())}
                 frozenAt={stopRequestedAt}
                 loading={loading}
-                filtered={isFiltered || search.trim() !== '' || projectFilter !== 'all'}
+                filtered={isFiltered || search.trim() !== '' || projectFilter !== 'all' || stageFilter !== 'all'}
               />
             </section>
           )}

@@ -9,7 +9,11 @@ const TASK_FIELDS = [
   'allocated_hours',
   'effective_hours',
   'remaining_hours',
+  'state',
 ];
+
+// project.task.state en Odoo 17+: '1_done' (hecha) y '1_canceled' (cancelada) son estados cerrados.
+const CLOSED_TASK_STATES = ['1_done', '1_canceled'];
 
 // Odoo 16 y anteriores no tienen allocated_hours (se llamaba planned_hours).
 const TASK_FIELDS_BASIC = ['id', 'name', 'project_id', 'date_deadline', 'priority', 'stage_id'];
@@ -43,8 +47,25 @@ async function searchTasksWithFallback(client, extraDomain, order) {
   throw lastError;
 }
 
+// Solo tareas vivas: se descartan las cerradas por estado y, si esa versión de Odoo no tiene
+// el campo state, las que están en una etapa plegada (que es donde suelen ir las terminadas).
 async function fetchAssignedTasks(client) {
-  return searchTasksWithFallback(client, [['active', '=', true]], 'date_deadline asc');
+  const base = [['active', '=', true]];
+  const variants = [
+    [...base, ['state', 'not in', CLOSED_TASK_STATES]],
+    [...base, ['stage_id.fold', '=', false]],
+    base,
+  ];
+
+  let lastError;
+  for (const domain of variants) {
+    try {
+      return await searchTasksWithFallback(client, domain, 'date_deadline asc');
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
 
 async function fetchOverdueTasks(client) {
@@ -54,15 +75,21 @@ async function fetchOverdueTasks(client) {
     ['date_deadline', '!=', false],
     ['active', '=', true],
   ];
-  try {
-    return await searchTasksWithFallback(
-      client,
-      [...extraDomain, ['stage_id.fold', '=', false]],
-      'date_deadline asc',
-    );
-  } catch {
-    return searchTasksWithFallback(client, extraDomain, 'date_deadline asc');
+  const variants = [
+    [...extraDomain, ['state', 'not in', CLOSED_TASK_STATES]],
+    [...extraDomain, ['stage_id.fold', '=', false]],
+    extraDomain,
+  ];
+
+  let lastError;
+  for (const domain of variants) {
+    try {
+      return await searchTasksWithFallback(client, domain, 'date_deadline asc');
+    } catch (err) {
+      lastError = err;
+    }
   }
+  throw lastError;
 }
 
 const TICKET_FIELDS_FULL = [
@@ -84,7 +111,14 @@ const TICKET_FIELDS_BASIC = ['id', 'name', 'team_id', 'stage_id', 'priority', 'c
 // la app simplemente no muestra la pestaña de tickets.
 async function fetchAssignedTickets(client) {
   const baseDomain = [['user_id', '=', client.uid]];
+  // Un ticket cerrado tiene close_date y suele quedar en una etapa plegada.
+  const openDomain = [
+    ...baseDomain,
+    ['stage_id.fold', '=', false],
+    ['close_date', '=', false],
+  ];
   const attempts = [
+    { domain: openDomain, fields: TICKET_FIELDS_FULL },
     { domain: [...baseDomain, ['stage_id.fold', '=', false]], fields: TICKET_FIELDS_FULL },
     { domain: baseDomain, fields: TICKET_FIELDS_FULL },
     { domain: baseDomain, fields: TICKET_FIELDS_BASIC },

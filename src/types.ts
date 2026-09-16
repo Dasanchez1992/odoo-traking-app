@@ -122,6 +122,10 @@ export interface ElectronApi {
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;
 
+  showMainWindow: () => Promise<boolean>;
+  requestStopFromMini: () => Promise<boolean>;
+  onStopRequested: (callback: () => void) => () => void;
+
   onOverdueUpdate: (callback: (tasks: OdooTask[]) => void) => () => void;
 }
 
