@@ -307,17 +307,37 @@ ipcMain.handle('timer:discard', async () => {
   return true;
 });
 
+// El error de permisos de Odoo es largo y técnico; se traduce a algo accionable.
+function attendanceError(err) {
+  const msg = err.message || '';
+  if (/attendance/i.test(msg) && /acce|permis|allowed|derecho|grupo/i.test(msg)) {
+    return new Error(
+      'Tu usuario de Odoo no tiene permisos sobre Asistencias. Pide al administrador que te ' +
+        'asigne el grupo «Asistencias → Usuario: Leer sus propias asistencias».',
+    );
+  }
+  return err;
+}
+
 ipcMain.handle('attendance:status', async () => {
   const c = requireClient();
-  const employeeId = await odooService.getEmployeeId(c);
-  const open = await odooService.getOpenAttendance(c, employeeId);
-  return { employeeId, open };
+  try {
+    const employeeId = await odooService.getEmployeeId(c);
+    const open = await odooService.getOpenAttendance(c, employeeId);
+    return { employeeId, open };
+  } catch (err) {
+    throw attendanceError(err);
+  }
 });
 
 ipcMain.handle('attendance:toggle', async () => {
   const c = requireClient();
-  const employeeId = await odooService.getEmployeeId(c);
-  return odooService.toggleAttendance(c, employeeId);
+  try {
+    const employeeId = await odooService.getEmployeeId(c);
+    return await odooService.toggleAttendance(c, employeeId);
+  } catch (err) {
+    throw attendanceError(err);
+  }
 });
 
 ipcMain.handle('settings:get', async () => ({
