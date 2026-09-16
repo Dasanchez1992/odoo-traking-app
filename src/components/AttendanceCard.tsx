@@ -71,6 +71,9 @@ export default function AttendanceCard() {
                     {formatDurationShort(checkInDate.getTime(), now)}
                   </span>
                 </>
+              ) : isCheckedIn ? (
+                // Odoo confirma el fichaje pero el usuario no puede leer el detalle del registro.
+                'Jornada iniciada.'
               ) : (
                 'Registra tu entrada para comenzar a contabilizar la jornada.'
               )}

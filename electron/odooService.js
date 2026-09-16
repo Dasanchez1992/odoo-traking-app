@@ -194,7 +194,43 @@ async function getEmployeeId(client) {
   throw new Error('No se encontró un empleado de RRHH vinculado a este usuario en Odoo');
 }
 
+function isAccessError(err) {
+  const msg = (err && err.message) || '';
+  return /access|permis|derecho|allowed|AccessError/i.test(msg);
+}
+
+// Los usuarios sin grupo de asistencias no pueden leer hr.attendance, pero sí su propia ficha de
+// empleado, que ya expone el estado. Se intenta primero esa vía, como hace la propia web de Odoo.
 async function getOpenAttendance(client, employeeId) {
+  try {
+    const [employee] = await client.execute_kw('hr.employee', 'read', [
+      [employeeId],
+      ['attendance_state', 'last_attendance_id'],
+    ]);
+
+    if (employee && employee.attendance_state !== undefined) {
+      if (employee.attendance_state !== 'checked_in') return null;
+
+      const attendanceId = Array.isArray(employee.last_attendance_id)
+        ? employee.last_attendance_id[0]
+        : null;
+      if (!attendanceId) return { id: 0, check_in: false };
+
+      try {
+        const [attendance] = await client.execute_kw('hr.attendance', 'read', [
+          [attendanceId],
+          ['check_in'],
+        ]);
+        return { id: attendanceId, check_in: attendance ? attendance.check_in : false };
+      } catch {
+        // Sabemos que está fichado aunque no podamos leer la hora exacta.
+        return { id: attendanceId, check_in: false };
+      }
+    }
+  } catch (err) {
+    if (!isAccessError(err)) throw err;
+  }
+
   const recs = await client.execute_kw('hr.attendance', 'search_read', [
     [
       ['employee_id', '=', employeeId],
@@ -207,7 +243,23 @@ async function getOpenAttendance(client, employeeId) {
 
 async function toggleAttendance(client, employeeId) {
   const open = await getOpenAttendance(client, employeeId);
+  const action = open ? 'check_out' : 'check_in';
   const nowStr = toOdooUtcString(new Date());
+
+  // attendance_manual es el método que usa la propia web de Odoo para fichar; se ejecuta con
+  // permisos elevados, así que funciona aunque el usuario no pueda escribir en hr.attendance.
+  try {
+    await client.execute_kw('hr.employee', 'attendance_manual', [
+      [employeeId],
+      'hr_attendance.hr_attendance_action_my_attendances',
+    ]);
+    return { action, at: nowStr };
+  } catch (err) {
+    if (!isAccessError(err) && !/attendance_manual|does not exist|no existe/i.test(err.message)) {
+      throw err;
+    }
+  }
+
   if (open) {
     await client.execute_kw('hr.attendance', 'write', [[open.id], { check_out: nowStr }]);
     return { action: 'check_out', at: nowStr };
