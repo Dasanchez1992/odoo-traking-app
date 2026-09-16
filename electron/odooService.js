@@ -276,22 +276,36 @@ async function getOpenAttendance(client, employeeId) {
 }
 
 async function toggleAttendance(client, employeeId) {
-  const open = await getOpenAttendance(client, employeeId);
-  const action = open ? 'check_out' : 'check_in';
+  // No poder leer el estado no impide fichar: attendance_manual alterna por sí solo.
+  let open = null;
+  let stateKnown = true;
+  try {
+    open = await getOpenAttendance(client, employeeId);
+  } catch {
+    stateKnown = false;
+  }
+
   const nowStr = toOdooUtcString(new Date());
 
   // attendance_manual es el método que usa la propia web de Odoo para fichar; se ejecuta con
   // permisos elevados, así que funciona aunque el usuario no pueda escribir en hr.attendance.
+  let manualError;
   try {
     await client.execute_kw('hr.employee', 'attendance_manual', [
       [employeeId],
       'hr_attendance.hr_attendance_action_my_attendances',
     ]);
-    return { action, at: nowStr };
+    return { action: stateKnown ? (open ? 'check_out' : 'check_in') : 'toggled', at: nowStr };
   } catch (err) {
+    manualError = err;
     if (!isAccessError(err) && !/attendance_manual|does not exist|no existe/i.test(err.message)) {
       throw err;
     }
+  }
+
+  // Sin conocer el estado no se puede escribir a ciegas: se duplicaría una entrada abierta.
+  if (!stateKnown) {
+    throw manualError;
   }
 
   if (open) {

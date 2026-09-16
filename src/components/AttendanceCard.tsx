@@ -10,13 +10,13 @@ export default function AttendanceCard() {
   const [error, setError] = useState<string | null>(null);
 
   const isCheckedIn = !!status?.open;
-  const checkInDate = parseOdooDateTime(status?.open?.check_in);
+  const unknownState = status !== null && !status.readable;
+  const checkInDate = parseOdooDateTime(status?.open?.check_in ?? null);
   const now = useNow(isCheckedIn, 30000);
 
   async function refresh() {
     try {
-      const s = await window.api.getAttendanceStatus();
-      setStatus(s);
+      setStatus(await window.api.getAttendanceStatus());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo leer el estado de asistencia');
@@ -31,6 +31,7 @@ export default function AttendanceCard() {
 
   async function handleToggle() {
     setLoading(true);
+    setError(null);
     try {
       await window.api.toggleAttendance();
       await refresh();
@@ -56,26 +57,33 @@ export default function AttendanceCard() {
         ) : (
           <>
             <div className="attendance-status">
-              <span className="attendance-state">{isCheckedIn ? 'En jornada' : 'Fuera de jornada'}</span>
-              <span className={`pill ${isCheckedIn ? 'is-success' : ''}`}>
-                <span className={`dot ${isCheckedIn ? 'is-live' : ''}`} />
-                {isCheckedIn ? 'Activa' : 'Sin registrar'}
+              <span className="attendance-state">
+                {unknownState ? 'Jornada' : isCheckedIn ? 'En jornada' : 'Fuera de jornada'}
               </span>
+              {!unknownState && (
+                <span className={`pill ${isCheckedIn ? 'is-success' : ''}`}>
+                  <span className={`dot ${isCheckedIn ? 'is-live' : ''}`} />
+                  {isCheckedIn ? 'Activa' : 'Sin registrar'}
+                </span>
+              )}
             </div>
 
             <span className="attendance-since">
-              {isCheckedIn && checkInDate ? (
+              {unknownState
+                ? 'Tu usuario no puede consultar el historial de asistencias en Odoo, pero puedes intentar registrar el fichaje.'
+                : isCheckedIn && checkInDate
+                  ? null
+                  : isCheckedIn
+                    ? 'Jornada iniciada.'
+                    : 'Registra tu entrada para comenzar a contabilizar la jornada.'}
+
+              {!unknownState && isCheckedIn && checkInDate && (
                 <>
                   Entrada a las {formatOdooTime(status?.open?.check_in)} ·{' '}
                   <span className="attendance-elapsed">
                     {formatDurationShort(checkInDate.getTime(), now)}
                   </span>
                 </>
-              ) : isCheckedIn ? (
-                // Odoo confirma el fichaje pero el usuario no puede leer el detalle del registro.
-                'Jornada iniciada.'
-              ) : (
-                'Registra tu entrada para comenzar a contabilizar la jornada.'
               )}
             </span>
           </>
@@ -85,10 +93,11 @@ export default function AttendanceCard() {
       <button
         className={isCheckedIn ? 'btn-danger' : ''}
         onClick={handleToggle}
-        disabled={loading || !!error}
+        disabled={loading}
+        title={unknownState ? 'Registrar entrada o salida en Odoo' : undefined}
       >
         {isCheckedIn ? <IconLogout size={15} /> : <IconLogin size={15} />}
-        {isCheckedIn ? 'Marcar salida' : 'Marcar entrada'}
+        {unknownState ? 'Registrar fichaje' : isCheckedIn ? 'Marcar salida' : 'Marcar entrada'}
       </button>
     </section>
   );

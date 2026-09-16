@@ -410,12 +410,20 @@ function attendanceError(err) {
 
 ipcMain.handle('attendance:status', async () => {
   const c = requireClient();
+  const employeeId = await odooService.getEmployeeId(c);
+
+  // No poder leer el historial no implica no poder fichar: attendance_manual se ejecuta con
+  // permisos elevados. Se informa el estado como desconocido y se deja intentar el fichaje.
   try {
-    const employeeId = await odooService.getEmployeeId(c);
     const open = await odooService.getOpenAttendance(c, employeeId);
-    return { employeeId, open };
+    return { employeeId, open, readable: true };
   } catch (err) {
-    throw attendanceError(err);
+    return {
+      employeeId,
+      open: null,
+      readable: false,
+      message: attendanceError(err).message,
+    };
   }
 });
 

@@ -67,7 +67,10 @@ export interface TimerState {
 
 export interface AttendanceStatus {
   employeeId: number;
-  open: { id: number; check_in: string } | null;
+  open: { id: number; check_in: string | false } | null;
+  // false cuando Odoo no deja leer el historial de asistencias de este usuario.
+  readable: boolean;
+  message?: string;
 }
 
 export interface TimesheetLine {
@@ -117,7 +120,7 @@ export interface ElectronApi {
   discardTimer: () => Promise<boolean>;
 
   getAttendanceStatus: () => Promise<AttendanceStatus>;
-  toggleAttendance: () => Promise<{ action: 'check_in' | 'check_out'; at: string }>;
+  toggleAttendance: () => Promise<{ action: 'check_in' | 'check_out' | 'toggled'; at: string }>;
 
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;
