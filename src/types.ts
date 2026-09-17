@@ -93,6 +93,25 @@ export interface ProductivityData {
   attendances: AttendanceRecord[];
 }
 
+export interface TeamMember {
+  id: number;
+  name: string;
+  department: string | null;
+  hasUser: boolean;
+  firstCheckIn: string | null;
+  checkedIn: boolean;
+  workedToday: number;
+  workedWeek: number;
+  loggedToday: number;
+  loggedWeek: number;
+}
+
+export interface TeamSummary {
+  today: string;
+  weekStart: string;
+  employees: TeamMember[];
+}
+
 export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
@@ -108,6 +127,8 @@ export interface ElectronApi {
   listOverdueTasks: () => Promise<OdooTask[]>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
+  canManageTeam: () => Promise<boolean>;
+  getTeamSummary: () => Promise<TeamSummary>;
 
   getTimerState: () => Promise<TimerState | null>;
   startTimer: (item: OdooTask | OdooTicket, kind?: TimerKind) => Promise<TimerState>;

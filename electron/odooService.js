@@ -363,7 +363,157 @@ async function fetchProductivity(client, days = 14) {
   return { sinceKey, days, lines, attendances };
 }
 
+// Ecuador es UTC-5 fijo (sin horario de verano), así que el día local empieza a las 05:00 UTC.
+function ecuadorDayStartUtc(dayKey) {
+  return `${dayKey} 05:00:00`;
+}
+
+function mondayOf(dayKey) {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d, 12));
+  const weekday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - weekday);
+  return date.toISOString().slice(0, 10);
+}
+
+// El panel de equipo es solo para quien administra Empleados en Odoo.
+async function canManageTeam(client) {
+  try {
+    const result = await client.execute_kw('res.users', 'has_group', [
+      [client.uid],
+      'hr.group_hr_manager',
+    ]);
+    if (typeof result === 'boolean') return result;
+  } catch {
+    // has_group puede no ser invocable por RPC según la versión.
+  }
+
+  try {
+    // Sin permisos de RRHH, hr.employee no es legible (los demás usan hr.employee.public).
+    const count = await client.execute_kw('hr.employee', 'search_count', [[['active', '=', true]]]);
+    return count > 1;
+  } catch {
+    return false;
+  }
+}
+
+async function sumByEmployee(client, model, domain, field) {
+  const groups = await client.execute_kw(model, 'read_group', [domain, [field], ['employee_id']], {
+    lazy: false,
+  });
+  const totals = {};
+  groups.forEach((group) => {
+    const rel = group.employee_id;
+    const id = Array.isArray(rel) ? rel[0] : rel;
+    if (id) totals[id] = group[field] || 0;
+  });
+  return totals;
+}
+
+async function fetchTeamProductivity(client) {
+  const { ecuadorDateKey } = require('./dateUtil');
+  const today = ecuadorDateKey(new Date());
+  const weekStart = mondayOf(today);
+
+  const employees = await client.execute_kw(
+    'hr.employee',
+    'search_read',
+    [[['active', '=', true]], ['name', 'user_id', 'department_id']],
+    { limit: 400, order: 'name asc' },
+  );
+  const ids = employees.map((e) => e.id);
+  if (ids.length === 0) return { today, weekStart, employees: [] };
+
+  const safeSum = async (model, domain, field) => {
+    try {
+      return await sumByEmployee(client, model, domain, field);
+    } catch {
+      return {};
+    }
+  };
+
+  const [loggedWeek, loggedToday, workedWeek] = await Promise.all([
+    safeSum(
+      'account.analytic.line',
+      [
+        ['employee_id', 'in', ids],
+        ['date', '>=', weekStart],
+      ],
+      'unit_amount',
+    ),
+    safeSum(
+      'account.analytic.line',
+      [
+        ['employee_id', 'in', ids],
+        ['date', '=', today],
+      ],
+      'unit_amount',
+    ),
+    safeSum(
+      'hr.attendance',
+      [
+        ['employee_id', 'in', ids],
+        ['check_in', '>=', ecuadorDayStartUtc(weekStart)],
+      ],
+      'worked_hours',
+    ),
+  ]);
+
+  let todayAttendances = [];
+  try {
+    todayAttendances = await client.execute_kw('hr.attendance', 'search_read', [
+      [
+        ['employee_id', 'in', ids],
+        ['check_in', '>=', ecuadorDayStartUtc(today)],
+      ],
+      ['employee_id', 'check_in', 'check_out', 'worked_hours'],
+    ]);
+  } catch {
+    todayAttendances = [];
+  }
+
+  const byEmployee = new Map();
+  todayAttendances.forEach((att) => {
+    const id = Array.isArray(att.employee_id) ? att.employee_id[0] : att.employee_id;
+    const current = byEmployee.get(id) || { firstCheckIn: null, worked: 0, open: false };
+    if (!current.firstCheckIn || att.check_in < current.firstCheckIn) {
+      current.firstCheckIn = att.check_in;
+    }
+    current.worked += att.check_out
+      ? att.worked_hours || 0
+      : (Date.now() - new Date(`${att.check_in.replace(' ', 'T')}Z`).getTime()) / 3600000;
+    if (!att.check_out) current.open = true;
+    byEmployee.set(id, current);
+  });
+
+  return {
+    today,
+    weekStart,
+    employees: employees.map((employee) => {
+      const attendance = byEmployee.get(employee.id) || {
+        firstCheckIn: null,
+        worked: 0,
+        open: false,
+      };
+      return {
+        id: employee.id,
+        name: employee.name,
+        department: Array.isArray(employee.department_id) ? employee.department_id[1] : null,
+        hasUser: !!employee.user_id,
+        firstCheckIn: attendance.firstCheckIn,
+        checkedIn: attendance.open,
+        workedToday: Math.round(attendance.worked * 100) / 100,
+        workedWeek: Math.round((workedWeek[employee.id] || 0) * 100) / 100,
+        loggedToday: Math.round((loggedToday[employee.id] || 0) * 100) / 100,
+        loggedWeek: Math.round((loggedWeek[employee.id] || 0) * 100) / 100,
+      };
+    }),
+  };
+}
+
 module.exports = {
+  canManageTeam,
+  fetchTeamProductivity,
   fetchAssignedTasks,
   fetchAssignedTickets,
   fetchOverdueTasks,

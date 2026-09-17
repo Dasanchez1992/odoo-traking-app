@@ -1994,3 +1994,106 @@ textarea:focus {
   color: var(--text-muted);
   min-width: 0;
 }
+
+/* ============================================================
+   Panel de equipo
+   ============================================================ */
+.team-table-head,
+.team-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 90px 110px 130px 110px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+}
+
+.team-table-head {
+  height: 34px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.team-row {
+  min-height: 54px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s var(--ease);
+}
+
+.team-row:last-child {
+  border-bottom: none;
+}
+
+.team-row:hover {
+  background: var(--surface-hover);
+}
+
+.team-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.team-person .dot {
+  color: var(--text-subtle);
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.team-person .dot.is-live {
+  color: var(--success-dot);
+}
+
+.team-person-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.team-person-text strong {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-person-text span {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-cell {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.team-cell.is-danger,
+.team-cell .is-danger {
+  color: var(--danger-fg);
+  font-weight: 600;
+}
+
+.team-muted {
+  color: var(--text-subtle);
+}
+
+.stat-of {
+  font-style: normal;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-subtle);
+}

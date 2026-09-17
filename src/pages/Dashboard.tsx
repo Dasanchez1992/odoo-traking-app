@@ -9,6 +9,7 @@ import ProductivityPanel from '../components/ProductivityPanel';
 import StopTimerDialog from '../components/StopTimerDialog';
 import TicketList from '../components/TicketList';
 import FocusTimer from '../components/FocusTimer';
+import TeamPanel from '../components/TeamPanel';
 import { initialsOf } from '../lib/format';
 import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
 import { DateFilter, matchesDateFilter } from '../lib/taskDates';
@@ -51,7 +52,9 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   // Marca el instante en que se pidió detener: el cronómetro se congela ahí.
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
-  const [tab, setTab] = useState<'tasks' | 'tickets' | 'productivity'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'tickets' | 'productivity' | 'team'>('tasks');
+  // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
+  const [canManageTeam, setCanManageTeam] = useState(false);
 
   // Iniciar un cronómetro entra directo a la vista de enfoque; detenerlo o descartarlo la cierra.
   function handleTimerChange(next: TimerState | null) {
@@ -88,6 +91,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     // Detener desde la miniatura flotante abre aquí el diálogo de descripción.
     const unsubscribeStop = window.api.onStopRequested(() => setStopRequestedAt(Date.now()));
     window.api.listOverdueTasks().then(setOverdueTasks).catch(() => {});
+    window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
     return () => {
       unsubscribe();
       unsubscribeStop();
@@ -279,6 +283,16 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             >
               Productividad
             </button>
+            {canManageTeam && (
+              <button
+                className={`tab ${tab === 'team' ? 'is-active' : ''}`}
+                onClick={() => setTab('team')}
+                role="tab"
+                aria-selected={tab === 'team'}
+              >
+                Equipo
+              </button>
+            )}
           </div>
 
           {tab === 'tickets' && (
@@ -305,6 +319,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           )}
 
           {tab === 'productivity' && <ProductivityPanel />}
+
+          {tab === 'team' && canManageTeam && <TeamPanel />}
 
           {tab === 'tasks' && (
             <section className="card">

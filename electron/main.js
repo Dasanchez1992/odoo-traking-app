@@ -298,6 +298,18 @@ ipcMain.handle('tickets:open', async (_event, ticketId) => {
   return url;
 });
 
+ipcMain.handle('team:available', async () => {
+  try {
+    return await odooService.canManageTeam(requireClient());
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('team:summary', async () => {
+  return odooService.fetchTeamProductivity(requireClient());
+});
+
 ipcMain.handle('stats:productivity', async () => {
   return odooService.fetchProductivity(requireClient());
 });
