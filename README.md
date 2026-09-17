@@ -81,13 +81,13 @@ Este repositorio es privado, y `electron-updater` no puede descargar de un repos
 incrustar un token en la aplicación. Por eso los instaladores se publican en un repositorio
 **público aparte**, configurado en `build.publish` de `package.json`:
 
-    Dasanchez1992/elideysi-releases
+    Dasanchez1992/odoo-traking-app-release
 
 El código fuente sigue siendo privado; ese repositorio solo recibe el `.exe` y el `latest.yml`.
 
 ### Puesta en marcha (una sola vez)
 
-1. Crear en GitHub el repositorio **público** `elideysi-releases` (puede estar vacío).
+1. Crear en GitHub el repositorio **público** `odoo-traking-app-release` (puede estar vacío).
 2. Generar un token de acceso personal con permiso de escritura de contenido sobre ese repositorio
    (fine-grained: *Contents: Read and write*).
 3. En este repositorio, guardarlo en *Settings → Secrets and variables → Actions* con el nombre

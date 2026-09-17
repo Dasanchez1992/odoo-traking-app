@@ -47,7 +47,7 @@
       {
         "provider": "github",
         "owner": "Dasanchez1992",
-        "repo": "elideysi-releases",
+        "repo": "odoo-traking-app-release",
         "private": false,
         "releaseType": "release"
       }
