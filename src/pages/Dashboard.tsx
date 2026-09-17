@@ -10,6 +10,7 @@ import StopTimerDialog from '../components/StopTimerDialog';
 import TicketList from '../components/TicketList';
 import FocusTimer from '../components/FocusTimer';
 import TeamPanel from '../components/TeamPanel';
+import ActivityList from '../components/ActivityList';
 import { initialsOf } from '../lib/format';
 import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
 import { DateFilter, matchesDateFilter } from '../lib/taskDates';
@@ -52,7 +53,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   // Marca el instante en que se pidió detener: el cronómetro se congela ahí.
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
-  const [tab, setTab] = useState<'tasks' | 'tickets' | 'productivity' | 'team'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'tickets' | 'activities' | 'productivity' | 'team'>('tasks');
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
   const [canManageTeam, setCanManageTeam] = useState(false);
 
@@ -276,6 +277,14 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               Tickets
             </button>
             <button
+              className={`tab ${tab === 'activities' ? 'is-active' : ''}`}
+              onClick={() => setTab('activities')}
+              role="tab"
+              aria-selected={tab === 'activities'}
+            >
+              Actividades
+            </button>
+            <button
               className={`tab ${tab === 'productivity' ? 'is-active' : ''}`}
               onClick={() => setTab('productivity')}
               role="tab"
@@ -315,6 +324,17 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 onRequestStop={() => setStopRequestedAt(Date.now())}
                 frozenAt={stopRequestedAt}
               />
+            </section>
+          )}
+
+          {tab === 'activities' && (
+            <section className="card">
+              <div className="panel-head">
+                <div className="panel-title">
+                  <h2>Mis actividades</h2>
+                </div>
+              </div>
+              <ActivityList />
             </section>
           )}
 

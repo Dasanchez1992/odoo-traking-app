@@ -2244,3 +2244,114 @@ textarea:focus {
 .focus-clock.is-paused {
   opacity: 0.6;
 }
+
+/* ============================================================
+   Actividades
+   ============================================================ */
+.activity-table-head,
+.activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) 150px 120px;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+}
+
+.activity-table-head {
+  height: 34px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.activity-row {
+  position: relative;
+  min-height: 58px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s var(--ease);
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+.activity-row:hover {
+  background: var(--surface-hover);
+}
+
+.activity-row.is-overdue::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--danger-solid);
+}
+
+.activity-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-type {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.activity-summary {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-record {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.activity-model {
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+
+.activity-deadline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-deadline.is-overdue {
+  color: var(--danger-fg);
+  font-weight: 600;
+}
+
+.activity-deadline svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.activity-state {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-subtle);
+}

@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('api', {
   listOverdueTasks: () => ipcRenderer.invoke('tasks:overdue'),
   openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
   getProductivity: () => ipcRenderer.invoke('stats:productivity'),
+
+  listActivities: () => ipcRenderer.invoke('activities:list'),
+  completeActivity: (activityId) => ipcRenderer.invoke('activities:complete', activityId),
+  openRecordInOdoo: (model, recordId) => ipcRenderer.invoke('record:open', model, recordId),
   canManageTeam: () => ipcRenderer.invoke('team:available'),
   getTeamSummary: () => ipcRenderer.invoke('team:summary'),
 

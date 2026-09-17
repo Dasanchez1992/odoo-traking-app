@@ -310,6 +310,27 @@ ipcMain.handle('team:summary', async () => {
   return odooService.fetchTeamProductivity(requireClient());
 });
 
+ipcMain.handle('activities:list', async () => {
+  return odooService.fetchActivities(requireClient());
+});
+
+ipcMain.handle('activities:complete', async (_event, activityId) => {
+  return odooService.completeActivity(requireClient(), activityId);
+});
+
+// Abre en Odoo el registro al que pertenece una actividad, sea del modelo que sea.
+ipcMain.handle('record:open', async (_event, model, recordId) => {
+  const c = requireClient();
+  if (typeof model !== 'string' || !/^[a-z0-9_.]+$/.test(model)) {
+    throw new Error('Modelo inválido');
+  }
+  if (!Number.isInteger(recordId)) throw new Error('Registro inválido');
+
+  const url = `${c.url.replace(/\/+$/, '')}/web#id=${recordId}&model=${model}&view_type=form`;
+  await shell.openExternal(url);
+  return url;
+});
+
 ipcMain.handle('stats:productivity', async () => {
   return odooService.fetchProductivity(requireClient());
 });

@@ -144,6 +144,42 @@ async function fetchAssignedTickets(client) {
   return { available: false, tickets: [], reason: lastError ? lastError.message : '' };
 }
 
+const ACTIVITY_FIELDS = [
+  'id',
+  'res_model',
+  'res_id',
+  'res_name',
+  'activity_type_id',
+  'summary',
+  'note',
+  'date_deadline',
+  'state',
+  'create_date',
+];
+
+// mail.activity solo guarda las pendientes: al completarlas Odoo las borra y deja el rastro
+// en el chatter, así que basta con filtrar por responsable.
+async function fetchActivities(client) {
+  try {
+    const activities = await client.execute_kw(
+      'mail.activity',
+      'search_read',
+      [[['user_id', '=', client.uid]], ACTIVITY_FIELDS],
+      { order: 'date_deadline asc', limit: 300 },
+    );
+    return { available: true, activities };
+  } catch (err) {
+    return { available: false, activities: [], reason: err.message };
+  }
+}
+
+async function completeActivity(client, activityId) {
+  if (!Number.isInteger(activityId)) throw new Error('Actividad inválida');
+  return client.execute_kw('mail.activity', 'action_feedback', [[activityId]], {
+    feedback: 'Completada desde Elideysi',
+  });
+}
+
 async function resolveTicketProjectId(client, ticketId) {
   try {
     const [ticket] = await client.execute_kw('helpdesk.ticket', 'read', [
@@ -638,6 +674,8 @@ module.exports = {
   fetchTeamProductivity,
   fetchAssignedTasks,
   fetchAssignedTickets,
+  fetchActivities,
+  completeActivity,
   fetchOverdueTasks,
   fetchProductivity,
   logTimesheet,

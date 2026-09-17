@@ -45,6 +45,26 @@ export interface TicketsResult {
   reason?: string;
 }
 
+export interface OdooActivity {
+  id: number;
+  res_model: string;
+  res_id: number;
+  res_name: string | false;
+  activity_type_id: [number, string] | false;
+  summary: string | false;
+  note: string | false;
+  date_deadline: string | false;
+  // Calculado por Odoo: vencida, para hoy o planificada.
+  state: 'overdue' | 'today' | 'planned' | string;
+  create_date: string;
+}
+
+export interface ActivitiesResult {
+  available: boolean;
+  activities: OdooActivity[];
+  reason?: string;
+}
+
 export type TimerKind = 'task' | 'ticket';
 
 export interface TimerContext {
@@ -130,6 +150,10 @@ export interface ElectronApi {
   listOverdueTasks: () => Promise<OdooTask[]>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
+
+  listActivities: () => Promise<ActivitiesResult>;
+  completeActivity: (activityId: number) => Promise<unknown>;
+  openRecordInOdoo: (model: string, recordId: number) => Promise<string>;
   canManageTeam: () => Promise<boolean>;
   getTeamSummary: () => Promise<TeamSummary>;
 
