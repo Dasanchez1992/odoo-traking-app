@@ -55,12 +55,19 @@ jobs:
       - name: Compilar la interfaz
         run: npm run build
 
-      # electron-builder crea el Release y sube el .exe junto con latest.yml,
-      # que es el archivo que usa electron-updater para detectar versiones nuevas.
-      - name: Construir y publicar el instalador
-        run: npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      # Se construye sin publicar: el uploader propio de electron-builder se cuelga subiendo
+      # el instalador, así que los archivos se suben después con gh, que sí reintenta y avisa.
+      - name: Construir el instalador
+        run: npx electron-builder --win --publish never
+
+      - name: Comprobar los archivos a publicar
+        shell: bash
+        run: |
+          ls -lh release/ || true
+          if [ ! -f release/latest.yml ]; then
+            echo "No se generó release/latest.yml; sin él la app no detecta actualizaciones."
+            exit 1
+          fi
 
       - name: Redactar las notas con los commits de la versión
         if: startsWith(github.ref, 'refs/tags/v')
@@ -91,11 +98,25 @@ jobs:
           } > release-notes.md
           cat release-notes.md
 
-      - name: Publicar las notas en el release
+      # latest.yml es lo que consulta electron-updater para saber si hay una versión nueva.
+      - name: Publicar en el repositorio de instaladores
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
-          repo=$(node -p "require('./package.json').build.publish[0].owner + '/' + require('./package.json').build.publish[0].repo")
-          gh release edit "${GITHUB_REF_NAME}" --repo "$repo" --notes-file release-notes.md
+          repo=$(node -p "const p=require('./package.json').build.publish[0]; p.owner + '/' + p.repo")
+          tag="${GITHUB_REF_NAME}"
+          echo "Publicando $tag en $repo"
+
+          # Reutiliza el release si una ejecución anterior lo dejó a medias.
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release upload "$tag" release/*.exe release/latest.yml --repo "$repo" --clobber
+            gh release edit "$tag" --repo "$repo" --notes-file release-notes.md
+          else
+            gh release create "$tag" release/*.exe release/latest.yml \
+              --repo "$repo" --title "$tag" --notes-file release-notes.md
+          fi
+
+          echo "Publicado:"
+          gh release view "$tag" --repo "$repo" --json assets --jq '.assets[] | "\(.name) — \(.size) bytes"'
