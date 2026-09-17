@@ -1,14 +1,18 @@
 import { OdooTask } from '../types';
 import { ecuadorDateKey, parseOdooDateTime } from './odooDate';
 
-export type DateFilter = 'today' | 'week' | 'nodate' | 'all';
+export type DateFilter = 'today' | 'next7' | 'next15' | 'next30' | 'nodate' | 'all';
 
 export const DATE_FILTER_LABELS: Record<DateFilter, string> = {
   today: 'Para hoy',
-  week: 'Próximos 7 días',
+  next7: 'Próximos 7 días',
+  next15: 'Próximos 15 días',
+  next30: 'Próximos 30 días',
   nodate: 'Sin fecha',
   all: 'Cualquier fecha',
 };
+
+const HORIZON_DAYS: Record<string, number> = { next7: 7, next15: 15, next30: 30 };
 
 function dayKey(value: string | false | null | undefined): string | null {
   const date = parseOdooDateTime(value ?? null);
@@ -39,8 +43,9 @@ export function matchesDateFilter(task: OdooTask, filter: DateFilter, today: str
   if (start === null) return false;
 
   // "Para hoy" es lo que ya debería estar en marcha: su ventana empezó y aún no se cierra,
-  // más lo que quedó atrasado, que sigue siendo trabajo del día.
+  // más lo que quedó atrasado, que sigue siendo trabajo del día. Los horizontes amplían esa
+  // ventana hacia adelante, conservando lo que ya venció.
   if (filter === 'today') return start <= today;
 
-  return start <= addDays(today, 7);
+  return start <= addDays(today, HORIZON_DAYS[filter] ?? 7);
 }
