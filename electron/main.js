@@ -439,6 +439,16 @@ ipcMain.handle('attendance:status', async () => {
   }
 });
 
+ipcMain.handle('attendance:close-open', async () => {
+  const c = requireClient();
+  try {
+    const employeeId = await odooService.getEmployeeId(c);
+    return await odooService.closeOpenAttendance(c, employeeId);
+  } catch (err) {
+    throw attendanceError(err);
+  }
+});
+
 ipcMain.handle('attendance:toggle', async () => {
   const c = requireClient();
   try {

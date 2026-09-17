@@ -2180,3 +2180,10 @@ textarea:focus {
   color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
 }
+
+.attendance-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}

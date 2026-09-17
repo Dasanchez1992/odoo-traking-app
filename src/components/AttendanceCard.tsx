@@ -8,6 +8,8 @@ export default function AttendanceCard() {
   const [status, setStatus] = useState<AttendanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Odoo rechaza una entrada nueva si quedó otra sin cerrar; hay que ofrecer salir de ahí.
+  const [stuckOpen, setStuckOpen] = useState(false);
 
   const isCheckedIn = !!status?.open;
   const unknownState = status !== null && !status.readable;
@@ -36,7 +38,21 @@ export default function AttendanceCard() {
       await window.api.toggleAttendance();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo registrar la asistencia');
+      const message = err instanceof Error ? err.message : 'No se pudo registrar la asistencia';
+      setError(message);
+      setStuckOpen(/sin cerrar|no ha registrado su salida/i.test(message));
+      setLoading(false);
+    }
+  }
+
+  async function handleCloseOpen() {
+    setLoading(true);
+    try {
+      await window.api.closeOpenAttendance();
+      setStuckOpen(false);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cerrar el fichaje abierto');
       setLoading(false);
     }
   }
@@ -50,9 +66,16 @@ export default function AttendanceCard() {
         </span>
 
         {error ? (
-          <div className="alert alert-danger">
-            <IconAlert size={16} />
-            <span>{error}</span>
+          <div className="attendance-error">
+            <div className="alert alert-danger">
+              <IconAlert size={16} />
+              <span>{error}</span>
+            </div>
+            {stuckOpen && (
+              <button className="btn-secondary btn-sm" onClick={handleCloseOpen} disabled={loading}>
+                Cerrar fichaje abierto
+              </button>
+            )}
           </div>
         ) : (
           <>

@@ -232,6 +232,19 @@ async function getEmployeeId(client) {
   throw new Error('No se encontró un empleado de RRHH vinculado a este usuario en Odoo');
 }
 
+// Odoo impide crear una asistencia si quedó otra sin cerrar; conviene decirlo en claro.
+function translateAttendanceWriteError(err) {
+  const msg = (err && err.message) || '';
+  if (/no ha registrado su salida|has not checked out|not checked out/i.test(msg)) {
+    const when = msg.match(/(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/);
+    return new Error(
+      `Odoo tiene un fichaje tuyo sin cerrar${when ? ` desde ${when[1]}` : ''}. ` +
+        'Ciérralo con «Cerrar fichaje abierto» antes de volver a marcar entrada.',
+    );
+  }
+  return err;
+}
+
 function isAccessError(err) {
   const msg = (err && err.message) || '';
   return /access|permis|derecho|allowed|AccessError/i.test(msg);
@@ -302,8 +315,9 @@ async function toggleAttendance(client, employeeId) {
     return { action: stateKnown ? (open ? 'check_out' : 'check_in') : 'toggled', at: nowStr };
   } catch (err) {
     manualError = err;
-    if (!isAccessError(err) && !/attendance_manual|does not exist|no existe/i.test(err.message)) {
-      throw err;
+    // Solo se recurre al camino manual si el método no existe en esta versión de Odoo.
+    if (!/attendance_manual|does not exist|no existe|doesn't have/i.test(err.message)) {
+      throw translateAttendanceWriteError(err);
     }
   }
 
@@ -312,14 +326,42 @@ async function toggleAttendance(client, employeeId) {
     throw manualError;
   }
 
-  if (open) {
-    await client.execute_kw('hr.attendance', 'write', [[open.id], { check_out: nowStr }]);
-    return { action: 'check_out', at: nowStr };
+  try {
+    if (open) {
+      await client.execute_kw('hr.attendance', 'write', [[open.id], { check_out: nowStr }]);
+      return { action: 'check_out', at: nowStr };
+    }
+    await client.execute_kw('hr.attendance', 'create', [
+      { employee_id: employeeId, check_in: nowStr },
+    ]);
+    return { action: 'check_in', at: nowStr };
+  } catch (err) {
+    throw translateAttendanceWriteError(err);
   }
-  await client.execute_kw('hr.attendance', 'create', [
-    { employee_id: employeeId, check_in: nowStr },
-  ]);
-  return { action: 'check_in', at: nowStr };
+}
+
+// Cierra un fichaje que quedó abierto, para salir del estado en el que Odoo ya no deja fichar.
+async function closeOpenAttendance(client, employeeId) {
+  const records = await client.execute_kw(
+    'hr.attendance',
+    'search_read',
+    [
+      [
+        ['employee_id', '=', employeeId],
+        ['check_out', '=', false],
+      ],
+      ['id', 'check_in'],
+    ],
+    { order: 'check_in desc', limit: 1 },
+  );
+
+  if (records.length === 0) {
+    throw new Error('No hay ningún fichaje abierto que cerrar.');
+  }
+
+  const nowStr = toOdooUtcString(new Date());
+  await client.execute_kw('hr.attendance', 'write', [[records[0].id], { check_out: nowStr }]);
+  return { action: 'check_out', at: nowStr, closedId: records[0].id };
 }
 
 async function fetchProductivity(client, days = 14) {
@@ -531,4 +573,5 @@ module.exports = {
   getEmployeeId,
   getOpenAttendance,
   toggleAttendance,
+  closeOpenAttendance,
 };
