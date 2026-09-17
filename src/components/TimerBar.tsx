@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TimerState } from '../types';
-import { formatStopwatch, useNow } from '../lib/format';
-import { IconClose, IconExpand, IconStop } from './Icons';
+import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
+import { IconClose, IconExpand, IconPause, IconPlay, IconStop } from './Icons';
 
 interface Props {
   timer: TimerState;
@@ -9,6 +9,7 @@ interface Props {
   onRequestStop: () => void;
   onDiscarded: () => void;
   onEnterFocus: () => void;
+  onTimerChange: (timer: TimerState) => void;
 }
 
 export default function TimerBar({
@@ -17,9 +18,11 @@ export default function TimerBar({
   onRequestStop,
   onDiscarded,
   onEnterFocus,
+  onTimerChange,
 }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const now = useNow(frozenAt === null);
+  const paused = timer.segmentStartedAt === null;
+  const now = useNow(!paused && frozenAt === null);
   const displayNow = frozenAt ?? now;
 
   async function handleDiscard() {
@@ -27,16 +30,22 @@ export default function TimerBar({
     onDiscarded();
   }
 
+  async function togglePause() {
+    onTimerChange(paused ? await window.api.resumeTimer() : await window.api.pauseTimer());
+  }
+
   return (
     <div className="timer-bar">
       <div className="timer-bar-info">
         <span
-          className={`dot ${frozenAt === null ? 'is-live' : ''}`}
-          style={{ color: frozenAt === null ? 'var(--success-dot)' : 'var(--text-subtle)' }}
+          className={`dot ${!paused && frozenAt === null ? 'is-live' : ''}`}
+          style={{
+            color: paused ? 'var(--warning-fg)' : frozenAt === null ? 'var(--success-dot)' : 'var(--text-subtle)',
+          }}
         />
         <div>
           <div className="timer-bar-label">
-            {frozenAt === null ? 'Registrando tiempo' : 'Cronómetro detenido'}
+            {paused ? 'En pausa' : frozenAt === null ? 'Registrando tiempo' : 'Cronómetro detenido'}
           </div>
           <div className="timer-bar-task" title={timer.taskName}>
             {timer.taskName}
@@ -45,7 +54,9 @@ export default function TimerBar({
       </div>
 
       <div className="timer-bar-right">
-        <span className="timer-bar-clock">{formatStopwatch(timer.startedAt, displayNow)}</span>
+        <span className={`timer-bar-clock ${paused ? 'is-paused' : ''}`}>
+          {formatElapsed(timerElapsedMs(timer, displayNow))}
+        </span>
 
         {confirmDiscard ? (
           <>
@@ -66,6 +77,14 @@ export default function TimerBar({
             >
               <IconExpand size={14} />
               Modo enfoque
+            </button>
+            <button
+              className="btn-secondary btn-sm"
+              onClick={togglePause}
+              title={paused ? 'Reanudar el cronómetro' : 'Pausar el cronómetro'}
+            >
+              {paused ? <IconPlay size={12} /> : <IconPause size={12} />}
+              {paused ? 'Reanudar' : 'Pausar'}
             </button>
             <button
               className="btn-ghost btn-sm"

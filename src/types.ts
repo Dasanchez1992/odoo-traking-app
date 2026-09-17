@@ -64,6 +64,9 @@ export interface TimerState {
   projectName?: string | null;
   context?: TimerContext;
   startedAt: number;
+  // El tiempo se acumula por segmentos: segmentStartedAt es null mientras está en pausa.
+  segmentStartedAt: number | null;
+  accumulatedMs: number;
 }
 
 export interface AttendanceStatus {
@@ -140,6 +143,8 @@ export interface ElectronApi {
     stoppedAt?: number;
   }) => Promise<TimerState & { stoppedAt: number; timesheetId: number }>;
   discardTimer: () => Promise<boolean>;
+  pauseTimer: () => Promise<TimerState>;
+  resumeTimer: () => Promise<TimerState>;
 
   getAttendanceStatus: () => Promise<AttendanceStatus>;
   toggleAttendance: () => Promise<{ action: 'check_in' | 'check_out' | 'toggled'; at: string }>;

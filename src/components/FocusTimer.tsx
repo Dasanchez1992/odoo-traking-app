@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { TimerState } from '../types';
-import { useNow } from '../lib/format';
+import { timerElapsedMs, useNow } from '../lib/format';
 import { parseOdooDateTime } from '../lib/odooDate';
-import { IconAlert, IconClose, IconStop } from './Icons';
+import { IconAlert, IconClose, IconPause, IconPlay, IconStop } from './Icons';
 
 interface Props {
   timer: TimerState;
@@ -10,6 +10,7 @@ interface Props {
   onRequestStop: () => void;
   onDiscarded: () => void;
   onExit: () => void;
+  onTimerChange: (timer: TimerState) => void;
 }
 
 function formatHours(hours: number) {
@@ -28,8 +29,8 @@ function formatCountdown(deadline: Date, now: number) {
   return diff >= 0 ? `SLA vence en ${amount}` : `SLA vencido hace ${amount}`;
 }
 
-function splitClock(fromMs: number, toMs: number) {
-  const total = Math.max(0, Math.floor((toMs - fromMs) / 1000));
+function splitClock(totalMs: number) {
+  const total = Math.max(0, Math.floor(totalMs / 1000));
   const pad = (n: number) => String(n).padStart(2, '0');
   return {
     head: `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}`,
@@ -43,14 +44,17 @@ export default function FocusTimer({
   onRequestStop,
   onDiscarded,
   onExit,
+  onTimerChange,
 }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const now = useNow(frozenAt === null);
+  const paused = timer.segmentStartedAt === null;
+  const now = useNow(!paused && frozenAt === null);
   const displayNow = frozenAt ?? now;
-  const { head, seconds } = splitClock(timer.startedAt, displayNow);
+  const elapsed = timerElapsedMs(timer, displayNow);
+  const { head, seconds } = splitClock(elapsed);
 
   const context = timer.context;
-  const elapsedHours = (displayNow - timer.startedAt) / 3600000;
+  const elapsedHours = elapsed / 3600000;
   // El avance incluye lo que llevo midiendo ahora, para que la barra se mueva en vivo.
   const liveSpent = (context?.spentHours ?? 0) + elapsedHours;
   const allocated = context?.allocatedHours ?? 0;
@@ -74,6 +78,10 @@ export default function FocusTimer({
     onDiscarded();
   }
 
+  async function togglePause() {
+    onTimerChange(paused ? await window.api.resumeTimer() : await window.api.pauseTimer());
+  }
+
   return (
     <div className="focus-timer">
       <button className="focus-exit" onClick={onExit} title="Volver a la lista (Esc)">
@@ -94,7 +102,7 @@ export default function FocusTimer({
         )}
 
         <div className="focus-clock-wrap">
-          <div className="focus-clock">
+          <div className={`focus-clock ${paused ? 'is-paused' : ''}`}>
             <span>{head}</span>
             <span className="focus-seconds" key={seconds}>
               :{seconds}
@@ -103,8 +111,8 @@ export default function FocusTimer({
         </div>
 
         <div className="focus-status">
-          <span className={`dot ${frozenAt === null ? 'is-live' : ''}`} />
-          {frozenAt === null ? 'Registrando tiempo' : 'Cronómetro detenido'}
+          <span className={`dot ${!paused && frozenAt === null ? 'is-live' : ''}`} />
+          {paused ? 'En pausa' : frozenAt === null ? 'Registrando tiempo' : 'Cronómetro detenido'}
         </div>
 
         {showProgress && (
@@ -148,6 +156,10 @@ export default function FocusTimer({
             <button className="btn-danger btn-lg" onClick={onRequestStop}>
               <IconStop size={14} />
               Detener y registrar
+            </button>
+            <button className="btn-on-dark btn-lg" onClick={togglePause}>
+              {paused ? <IconPlay size={13} /> : <IconPause size={13} />}
+              {paused ? 'Reanudar' : 'Pausar'}
             </button>
             <button className="btn-on-dark" onClick={() => setConfirmDiscard(true)}>
               Descartar

@@ -352,7 +352,30 @@ ipcMain.handle('timer:start', async (_event, item, kind = 'task') => {
       slaDeadline: item.sla_deadline || null,
     },
     startedAt: Date.now(),
+    // El tiempo se acumula por segmentos: segmentStartedAt es null mientras está en pausa.
+    segmentStartedAt: Date.now(),
+    accumulatedMs: 0,
   };
+  return timerState;
+});
+
+ipcMain.handle('timer:pause', async () => {
+  if (!timerState) throw new Error('No hay ningún cronómetro corriendo');
+  if (timerState.segmentStartedAt === null) return timerState;
+
+  timerState = {
+    ...timerState,
+    accumulatedMs: timerState.accumulatedMs + Math.max(0, Date.now() - timerState.segmentStartedAt),
+    segmentStartedAt: null,
+  };
+  return timerState;
+});
+
+ipcMain.handle('timer:resume', async () => {
+  if (!timerState) throw new Error('No hay ningún cronómetro que reanudar');
+  if (timerState.segmentStartedAt !== null) return timerState;
+
+  timerState = { ...timerState, segmentStartedAt: Date.now() };
   return timerState;
 });
 
@@ -368,7 +391,13 @@ ipcMain.handle('timer:stop', async (_event, { description, stoppedAt } = {}) => 
       ? stoppedAt
       : now;
 
-  const finished = { ...timerState, stoppedAt: validStop, description };
+  const runningMs =
+    timerState.segmentStartedAt === null
+      ? 0
+      : Math.max(0, validStop - timerState.segmentStartedAt);
+  const elapsedMs = timerState.accumulatedMs + runningMs;
+
+  const finished = { ...timerState, stoppedAt: validStop, elapsedMs, description };
   stopInFlight = true;
   try {
     hideMiniWindow();

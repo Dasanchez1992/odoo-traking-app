@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('api', {
   startTimer: (item, kind) => ipcRenderer.invoke('timer:start', item, kind),
   stopTimer: (payload) => ipcRenderer.invoke('timer:stop', payload),
   discardTimer: () => ipcRenderer.invoke('timer:discard'),
+  pauseTimer: () => ipcRenderer.invoke('timer:pause'),
+  resumeTimer: () => ipcRenderer.invoke('timer:resume'),
 
   getAttendanceStatus: () => ipcRenderer.invoke('attendance:status'),
   toggleAttendance: () => ipcRenderer.invoke('attendance:toggle'),

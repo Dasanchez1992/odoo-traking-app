@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { TimerState } from '../types';
-import { formatStopwatch } from '../lib/format';
+import { formatElapsed, timerElapsedMs } from '../lib/format';
 import { IconAlert, IconClose, IconStop } from './Icons';
 
 const MIN_BILLABLE_MINUTES = 5;
@@ -10,14 +10,23 @@ interface Props {
   stoppedAt: number;
   onRegistered: () => void;
   onCancel: () => void;
+  onDiscarded: () => void;
 }
 
-export default function StopTimerDialog({ timer, stoppedAt, onRegistered, onCancel }: Props) {
+export default function StopTimerDialog({
+  timer,
+  stoppedAt,
+  onRegistered,
+  onCancel,
+  onDiscarded,
+}: Props) {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  const elapsedMinutes = (stoppedAt - timer.startedAt) / 60000;
+  const elapsedMs = timerElapsedMs(timer, stoppedAt);
+  const elapsedMinutes = elapsedMs / 60000;
   const appliesMinimum = elapsedMinutes < MIN_BILLABLE_MINUTES;
 
   useEffect(() => {
@@ -27,6 +36,17 @@ export default function StopTimerDialog({ timer, stoppedAt, onRegistered, onCanc
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onCancel, saving]);
+
+  async function handleDiscard() {
+    setSaving(true);
+    try {
+      await window.api.discardTimer();
+      onDiscarded();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo descartar el tiempo');
+      setSaving(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -68,7 +88,7 @@ export default function StopTimerDialog({ timer, stoppedAt, onRegistered, onCanc
             <div className="stop-summary-task" title={timer.taskName}>
               {timer.taskName}
             </div>
-            <div className="stop-summary-time">{formatStopwatch(timer.startedAt, stoppedAt)}</div>
+            <div className="stop-summary-time">{formatElapsed(elapsedMs)}</div>
           </div>
 
           {appliesMinimum && (
@@ -104,13 +124,41 @@ export default function StopTimerDialog({ timer, stoppedAt, onRegistered, onCanc
           )}
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onCancel} disabled={saving}>
-              Seguir midiendo
-            </button>
-            <button type="submit" className="btn-danger" disabled={saving}>
-              <IconStop size={13} />
-              {saving ? 'Registrando...' : 'Registrar en Odoo'}
-            </button>
+            {confirmDiscard ? (
+              <>
+                <span className="modal-confirm">Se perderá el tiempo medido.</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setConfirmDiscard(false)}
+                  disabled={saving}
+                >
+                  Cancelar
+                </button>
+                <button type="button" className="btn-danger" onClick={handleDiscard} disabled={saving}>
+                  Sí, descartar
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-ghost modal-action-start"
+                  onClick={() => setConfirmDiscard(true)}
+                  disabled={saving}
+                  title="Cerrar el cronómetro sin registrar nada en Odoo"
+                >
+                  Descartar
+                </button>
+                <button type="button" className="btn-secondary" onClick={onCancel} disabled={saving}>
+                  Seguir midiendo
+                </button>
+                <button type="submit" className="btn-danger" disabled={saving}>
+                  <IconStop size={13} />
+                  {saving ? 'Registrando...' : 'Registrar en Odoo'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </form>

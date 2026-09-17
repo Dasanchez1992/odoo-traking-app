@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { TimerState } from './types';
-import { formatStopwatch, useNow } from './lib/format';
-import { IconExpand, IconStop } from './components/Icons';
+import { formatElapsed, timerElapsedMs, useNow } from './lib/format';
+import { IconExpand, IconPause, IconPlay, IconStop } from './components/Icons';
 
 export default function MiniTimer() {
   const [timer, setTimer] = useState<TimerState | null>(null);
-  const now = useNow(true);
+  const paused = timer?.segmentStartedAt === null;
+  const now = useNow(!paused);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,12 +43,25 @@ export default function MiniTimer() {
       <div className="mini-body">
         <div className="mini-info">
           <div className="mini-task" title={timer.taskName}>
+            {paused ? '⏸ ' : ''}
             {timer.taskName}
           </div>
-          <div className="mini-clock">{formatStopwatch(timer.startedAt, now)}</div>
+          <div className={`mini-clock ${paused ? 'is-paused' : ''}`}>
+            {formatElapsed(timerElapsedMs(timer, now))}
+          </div>
         </div>
 
         <div className="mini-actions">
+          <button
+            className="mini-btn"
+            onClick={async () =>
+              setTimer(paused ? await window.api.resumeTimer() : await window.api.pauseTimer())
+            }
+            title={paused ? 'Reanudar' : 'Pausar'}
+            aria-label={paused ? 'Reanudar' : 'Pausar'}
+          >
+            {paused ? <IconPlay size={13} /> : <IconPause size={13} />}
+          </button>
           <button
             className="mini-btn is-stop"
             onClick={() => window.api.requestStopFromMini()}

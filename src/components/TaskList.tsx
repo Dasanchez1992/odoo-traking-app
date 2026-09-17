@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { OdooTask, TimerState } from '../types';
 import { formatOdooDateShort, formatOdooDateTime, isPast } from '../lib/odooDate';
-import { formatStopwatch, useNow } from '../lib/format';
+import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
 import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
 
 interface Props {
@@ -25,7 +25,7 @@ export default function TaskList({
 }: Props) {
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const now = useNow(timer !== null && frozenAt === null);
+  const now = useNow(timer !== null && timer.segmentStartedAt !== null && frozenAt === null);
   const displayNow = frozenAt ?? now;
 
   async function handleStart(task: OdooTask) {
@@ -133,7 +133,7 @@ export default function TaskList({
             <div className="task-action">
               {isRunning && (
                 <span className="task-elapsed">
-                  {formatStopwatch(timer.startedAt, displayNow)}
+                  {formatElapsed(timerElapsedMs(timer, displayNow))}
                 </span>
               )}
               {isRunning ? (

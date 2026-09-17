@@ -166,9 +166,9 @@ async function resolveTicketProjectId(client, ticketId) {
 
 async function logTicketTimesheet(
   client,
-  { ticketId, projectId, startedAt, stoppedAt, description },
+  { ticketId, projectId, startedAt, elapsedMs, description },
 ) {
-  const hours = (stoppedAt - startedAt) / 3600000;
+  const hours = elapsedMs / 3600000;
   const unitAmount = Math.max(MIN_BILLABLE_HOURS, Math.round(hours * 100) / 100);
 
   const resolvedProjectId = projectId || (await resolveTicketProjectId(client, ticketId));
@@ -190,8 +190,8 @@ async function logTicketTimesheet(
   ]);
 }
 
-async function logTimesheet(client, { taskId, projectId, startedAt, stoppedAt, description }) {
-  const hours = (stoppedAt - startedAt) / 3600000;
+async function logTimesheet(client, { taskId, projectId, startedAt, elapsedMs, description }) {
+  const hours = elapsedMs / 3600000;
   const unitAmount = Math.max(MIN_BILLABLE_HOURS, Math.round(hours * 100) / 100);
 
   // project_id es obligatorio en las hojas de horas; si no vino con la tarea, se relee de Odoo.

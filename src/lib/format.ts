@@ -13,6 +13,23 @@ export function useNow(active: boolean, intervalMs = 1000) {
   return now;
 }
 
+// Suma los segmentos ya cerrados más el que esté corriendo.
+export function timerElapsedMs(
+  timer: { segmentStartedAt: number | null; accumulatedMs: number },
+  now: number,
+) {
+  const running = timer.segmentStartedAt === null ? 0 : Math.max(0, now - timer.segmentStartedAt);
+  return timer.accumulatedMs + running;
+}
+
+export function formatElapsed(totalMs: number) {
+  const totalSeconds = Math.max(0, Math.floor(totalMs / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
+}
+
 export function formatStopwatch(fromMs: number, toMs: number) {
   const totalSeconds = Math.max(0, Math.floor((toMs - fromMs) / 1000));
   const h = Math.floor(totalSeconds / 3600);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { OdooTicket, TicketsResult, TimerState } from '../types';
 import { formatOdooDateShort, isPast } from '../lib/odooDate';
-import { formatStopwatch, useNow } from '../lib/format';
+import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
 import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
 
 interface Props {
@@ -19,7 +19,7 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
   const [stageFilter, setStageFilter] = useState('all');
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const now = useNow(timer !== null && frozenAt === null);
+  const now = useNow(timer !== null && timer.segmentStartedAt !== null && frozenAt === null);
   const displayNow = frozenAt ?? now;
 
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
                 <div className="task-action">
                   {isRunning && (
                     <span className="task-elapsed">
-                      {formatStopwatch(timer.startedAt, displayNow)}
+                      {formatElapsed(timerElapsedMs(timer, displayNow))}
                     </span>
                   )}
                   {isRunning ? (

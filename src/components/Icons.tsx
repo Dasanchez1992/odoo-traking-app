@@ -26,6 +26,15 @@ export function IconPlay({ size = 16, className }: IconProps) {
   );
 }
 
+export function IconPause({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="6.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none" />
+      <rect x="14" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconStop({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>

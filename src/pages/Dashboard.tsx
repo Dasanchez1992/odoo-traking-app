@@ -379,6 +379,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           onRequestStop={() => setStopRequestedAt(Date.now())}
           onDiscarded={clearTimer}
           onEnterFocus={() => setFocusMode(true)}
+          onTimerChange={setTimer}
         />
       )}
 
@@ -389,6 +390,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           onRequestStop={() => setStopRequestedAt(Date.now())}
           onDiscarded={clearTimer}
           onExit={() => setFocusMode(false)}
+          onTimerChange={setTimer}
         />
       )}
 
@@ -397,6 +399,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           timer={timer}
           stoppedAt={stopRequestedAt}
           onRegistered={clearTimer}
+          onDiscarded={clearTimer}
           onCancel={() => setStopRequestedAt(null)}
         />
       )}
