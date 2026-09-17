@@ -252,44 +252,42 @@ function isAccessError(err) {
 
 // Los usuarios sin grupo de asistencias no pueden leer hr.attendance, pero sí su propia ficha de
 // empleado, que ya expone el estado. Se intenta primero esa vía, como hace la propia web de Odoo.
+// La tabla de asistencias es la fuente de verdad. El campo attendance_state del empleado es
+// un calculado que puede quedar desincronizado (diciendo "fuera" con una entrada abierta),
+// así que solo se usa cuando no hay permiso para consultar hr.attendance.
 async function getOpenAttendance(client, employeeId) {
   try {
-    const [employee] = await client.execute_kw('hr.employee', 'read', [
-      [employeeId],
-      ['attendance_state', 'last_attendance_id'],
-    ]);
-
-    if (employee && employee.attendance_state !== undefined) {
-      if (employee.attendance_state !== 'checked_in') return null;
-
-      const attendanceId = Array.isArray(employee.last_attendance_id)
-        ? employee.last_attendance_id[0]
-        : null;
-      if (!attendanceId) return { id: 0, check_in: false };
-
-      try {
-        const [attendance] = await client.execute_kw('hr.attendance', 'read', [
-          [attendanceId],
-          ['check_in'],
-        ]);
-        return { id: attendanceId, check_in: attendance ? attendance.check_in : false };
-      } catch {
-        // Sabemos que está fichado aunque no podamos leer la hora exacta.
-        return { id: attendanceId, check_in: false };
-      }
-    }
+    const records = await client.execute_kw(
+      'hr.attendance',
+      'search_read',
+      [
+        [
+          ['employee_id', '=', employeeId],
+          ['check_out', '=', false],
+        ],
+        ['id', 'check_in'],
+      ],
+      { order: 'check_in desc', limit: 1 },
+    );
+    return records[0] || null;
   } catch (err) {
     if (!isAccessError(err)) throw err;
   }
 
-  const recs = await client.execute_kw('hr.attendance', 'search_read', [
-    [
-      ['employee_id', '=', employeeId],
-      ['check_out', '=', false],
-    ],
-    ['id', 'check_in'],
+  const [employee] = await client.execute_kw('hr.employee', 'read', [
+    [employeeId],
+    ['attendance_state', 'last_attendance_id'],
   ]);
-  return recs[0] || null;
+
+  if (!employee || employee.attendance_state === undefined) {
+    throw new Error('No se pudo leer el estado de asistencia de este empleado');
+  }
+  if (employee.attendance_state !== 'checked_in') return null;
+
+  const attendanceId = Array.isArray(employee.last_attendance_id)
+    ? employee.last_attendance_id[0]
+    : null;
+  return { id: attendanceId ?? 0, check_in: false };
 }
 
 async function toggleAttendance(client, employeeId) {
@@ -303,6 +301,18 @@ async function toggleAttendance(client, employeeId) {
   }
 
   const nowStr = toOdooUtcString(new Date());
+
+  // Con una entrada abierta confirmada se cierra directamente: attendance_manual decide qué hacer
+  // mirando attendance_state, y si ese calculado quedó desincronizado intentaría crear otra
+  // entrada, que Odoo rechaza.
+  if (stateKnown && open && open.id) {
+    try {
+      await client.execute_kw('hr.attendance', 'write', [[open.id], { check_out: nowStr }]);
+      return { action: 'check_out', at: nowStr };
+    } catch (err) {
+      if (!isAccessError(err)) throw translateAttendanceWriteError(err);
+    }
+  }
 
   // attendance_manual es el método que usa la propia web de Odoo para fichar; se ejecuta con
   // permisos elevados, así que funciona aunque el usuario no pueda escribir en hr.attendance.
