@@ -71,14 +71,30 @@ Levanta Vite en `http://localhost:5173` y abre la ventana de Electron apuntando 
 
 ## Actualización automática
 
-La app usa `electron-updater`: al abrirse (y cada 4 horas) consulta los Releases de GitHub, descarga
-la versión nueva en segundo plano y ofrece reiniciar para instalarla. Solo funciona en la app
-empaquetada, no en desarrollo.
+La app usa `electron-updater`: al abrirse y cada 4 horas consulta los Releases, descarga la versión
+nueva en segundo plano y ofrece reiniciar para instalarla. En Configuración se ve la versión
+instalada, el estado y un botón para comprobar a mano. Solo funciona en la app empaquetada.
 
-> **Importante:** si el repositorio es privado, la actualización automática desde GitHub Releases
-> requiere un token de acceso incrustado en la app, lo que no es recomendable. Con repositorio
-> privado, las opciones son publicar los instaladores en un repositorio público aparte, en un
-> servidor propio (o S3), o distribuirlos a mano.
+### Por qué hay dos repositorios
+
+Este repositorio es privado, y `electron-updater` no puede descargar de un repositorio privado sin
+incrustar un token en la aplicación. Por eso los instaladores se publican en un repositorio
+**público aparte**, configurado en `build.publish` de `package.json`:
+
+    Dasanchez1992/elideysi-releases
+
+El código fuente sigue siendo privado; ese repositorio solo recibe el `.exe` y el `latest.yml`.
+
+### Puesta en marcha (una sola vez)
+
+1. Crear en GitHub el repositorio **público** `elideysi-releases` (puede estar vacío).
+2. Generar un token de acceso personal con permiso de escritura de contenido sobre ese repositorio
+   (fine-grained: *Contents: Read and write*).
+3. En este repositorio, guardarlo en *Settings → Secrets and variables → Actions* con el nombre
+   **`RELEASES_TOKEN`**.
+
+Si el secret falta, el workflow se detiene al principio con un mensaje explicándolo, en lugar de
+fallar a mitad de la publicación.
 
 > **Firma de código:** los instaladores no están firmados, así que Windows SmartScreen mostrará un
 > aviso al instalar. Para evitarlo hace falta un certificado de firma de código (EV o estándar) y

@@ -45,7 +45,11 @@
     ],
     "publish": [
       {
-        "provider": "github"
+        "provider": "github",
+        "owner": "Dasanchez1992",
+        "repo": "elideysi-releases",
+        "private": false,
+        "releaseType": "release"
       }
     ],
     "win": {

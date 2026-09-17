@@ -22,6 +22,18 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Comprobar el token de publicación
+        shell: bash
+        env:
+          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if [ -z "$RELEASES_TOKEN" ]; then
+            echo "Falta el secret RELEASES_TOKEN."
+            echo "Crea un token con permiso de contenido sobre el repositorio de instaladores"
+            echo "y guárdalo en Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
       - name: Instalar dependencias
         run: npm ci
 
@@ -45,10 +57,10 @@ jobs:
 
       # electron-builder crea el Release y sube el .exe junto con latest.yml,
       # que es el archivo que usa electron-updater para detectar versiones nuevas.
-      - name: Construir y publicar en GitHub Releases
+      - name: Construir y publicar el instalador
         run: npx electron-builder --win --publish always
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
       - name: Redactar las notas con los commits de la versión
         if: startsWith(github.ref, 'refs/tags/v')
@@ -83,5 +95,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${GITHUB_REF_NAME}" --notes-file release-notes.md
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          repo=$(node -p "require('./package.json').build.publish[0].owner + '/' + require('./package.json').build.publish[0].repo")
+          gh release edit "${GITHUB_REF_NAME}" --repo "$repo" --notes-file release-notes.md
