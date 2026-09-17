@@ -13,6 +13,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # El historial completo hace falta para listar los commits desde la versión anterior.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -46,3 +49,39 @@ jobs:
         run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Redactar las notas con los commits de la versión
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          anterior=$(git tag --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -n 1)
+          {
+            echo "## Novedades"
+            echo
+            if [ -n "$anterior" ]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "${anterior}..${GITHUB_REF_NAME}" \
+                | grep -v '^- Versión ' || echo "- Sin cambios registrados"
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' "${GITHUB_REF_NAME}" \
+                | grep -v '^- Versión ' || echo "- Primera versión"
+            fi
+            echo
+            echo
+            echo "## Instalación"
+            echo
+            echo "Descarga \`Elideysi-${GITHUB_REF_NAME#v}-setup.exe\`. Windows mostrará un aviso de"
+            echo "SmartScreen porque el instalador no está firmado: elige «Más información» y"
+            echo "«Ejecutar de todas formas». Si ya tienes la aplicación instalada, se actualiza sola."
+            if [ -n "$anterior" ]; then
+              echo
+              echo "**Todos los cambios**: https://github.com/${GITHUB_REPOSITORY}/compare/${anterior}...${GITHUB_REF_NAME}"
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publicar las notas en el release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --notes-file release-notes.md
