@@ -26,6 +26,16 @@ contextBridge.exposeInMainWorld('api', {
   pauseTimer: (key) => ipcRenderer.invoke('timer:pause', key),
   resumeTimer: (key) => ipcRenderer.invoke('timer:resume', key),
 
+  getAppVersion: () => ipcRenderer.invoke('app:version'),
+  getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('update:status', listener);
+    return () => ipcRenderer.removeListener('update:status', listener);
+  },
+
   listNotifications: () => ipcRenderer.invoke('notifications:list'),
   markNotificationsRead: () => ipcRenderer.invoke('notifications:mark-read'),
   clearNotifications: () => ipcRenderer.invoke('notifications:clear'),

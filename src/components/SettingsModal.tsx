@@ -1,20 +1,47 @@
 import { useEffect, useState } from 'react';
-import { AppSettings } from '../types';
+import { AppSettings, UpdateStatus } from '../types';
 import { IconAlert, IconClose } from './Icons';
 
 interface Props {
   onClose: () => void;
 }
 
+function updateMessage(update: UpdateStatus, version: string) {
+  const actual = version ? `Versión ${version}. ` : '';
+  switch (update.state) {
+    case 'dev':
+      return `${actual}Las actualizaciones automáticas solo funcionan en la aplicación instalada.`;
+    case 'checking':
+      return `${actual}Buscando una versión nueva...`;
+    case 'latest':
+      return `${actual}Estás al día.`;
+    case 'available':
+      return `${actual}Descargando la versión ${update.version}...`;
+    case 'downloading':
+      return `${actual}Descargando... ${update.percent ?? 0}%`;
+    case 'ready':
+      return `${actual}La versión ${update.version} está lista: reinicia para instalarla.`;
+    case 'error':
+      return `${actual}No se pudo comprobar: ${update.message ?? 'error desconocido'}`;
+    default:
+      return `${actual}La app busca actualizaciones al abrirse y cada cuatro horas.`;
+  }
+}
+
 export default function SettingsModal({ onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
+  const [version, setVersion] = useState('');
+  const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' });
   const [diagnosing, setDiagnosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     window.api.getSettings().then(setSettings).catch(() => setError('No se pudo leer la configuración'));
+    window.api.getAppVersion().then(setVersion).catch(() => {});
+    window.api.getUpdateStatus().then(setUpdate).catch(() => {});
+    return window.api.onUpdateStatus(setUpdate);
   }, []);
 
   useEffect(() => {
@@ -106,6 +133,28 @@ export default function SettingsModal({ onClose }: Props) {
                   onChange={() => toggle('remindersEnabled')}
                 />
               </label>
+
+              <div className="setting-row" style={{ display: 'block' }}>
+                <div className="setting-text">
+                  <strong>Actualizaciones</strong>
+                  <span>{updateMessage(update, version)}</span>
+                </div>
+                <div className="diagnosis-actions">
+                  {update.state === 'ready' ? (
+                    <button className="btn-secondary btn-sm" onClick={() => window.api.installUpdate()}>
+                      Reiniciar e instalar
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={() => window.api.checkForUpdates().then(setUpdate).catch(() => {})}
+                      disabled={update.state === 'checking' || update.state === 'downloading'}
+                    >
+                      {update.state === 'checking' ? 'Buscando...' : 'Buscar actualizaciones'}
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="setting-row" style={{ display: 'block' }}>
                 <div className="setting-text">

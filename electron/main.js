@@ -18,7 +18,12 @@ const sessionStore = require('./sessionStore');
 const settingsStore = require('./settingsStore');
 const { formatOdooDateTime } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
-const { setupAutoUpdater } = require('./updater');
+const {
+  setupAutoUpdater,
+  checkForUpdatesNow,
+  installUpdateNow,
+  getUpdateStatus,
+} = require('./updater');
 
 const OVERDUE_POLL_MS = 5 * 60 * 1000;
 const REFRESH_MS = 5 * 60 * 1000;
@@ -456,6 +461,14 @@ ipcMain.handle('tasks:open', async (_event, taskId) => {
   return url;
 });
 
+ipcMain.handle('app:version', async () => app.getVersion());
+
+ipcMain.handle('updates:status', async () => getUpdateStatus());
+
+ipcMain.handle('updates:check', async () => checkForUpdatesNow());
+
+ipcMain.handle('updates:install', async () => installUpdateNow());
+
 ipcMain.handle('notifications:list', async () => notifications);
 
 ipcMain.handle('notifications:mark-read', async () => {
@@ -654,7 +667,10 @@ if (!gotLock) {
 
     createWindow();
     createTray();
-    setupAutoUpdater({ onNotify: notify });
+    setupAutoUpdater({
+      onNotify: notify,
+      onStatus: (status) => broadcast('update:status', status),
+    });
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

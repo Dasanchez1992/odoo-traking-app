@@ -48,8 +48,14 @@ export default function StopTimerDialog({
     }
   }
 
+  const description_trimmed = description.trim();
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!description_trimmed) {
+      setError('Describe el trabajo realizado antes de registrarlo.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -99,7 +105,7 @@ export default function StopTimerDialog({
 
           <div className="field" style={{ marginTop: 16 }}>
             <label className="field-label" htmlFor="timesheet-description">
-              Descripción del trabajo
+              Descripción del trabajo <span className="field-required">*</span>
             </label>
             <textarea
               id="timesheet-description"
@@ -109,10 +115,10 @@ export default function StopTimerDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={saving}
+              required
             />
             <span className="field-hint">
-              Es lo que aparecerá en la hoja de horas de Odoo. Si lo dejas vacío se registra como
-              «Registrado desde Elideysi».
+              Es lo que aparecerá en la hoja de horas de Odoo, así que es obligatoria.
             </span>
           </div>
 
@@ -153,7 +159,12 @@ export default function StopTimerDialog({
                 <button type="button" className="btn-secondary" onClick={onCancel} disabled={saving}>
                   Seguir midiendo
                 </button>
-                <button type="submit" className="btn-danger" disabled={saving}>
+                <button
+                  type="submit"
+                  className="btn-danger"
+                  disabled={saving || !description_trimmed}
+                  title={!description_trimmed ? 'Escribe qué hiciste para poder registrar' : undefined}
+                >
                   <IconStop size={13} />
                   {saving ? 'Registrando...' : 'Registrar en Odoo'}
                 </button>

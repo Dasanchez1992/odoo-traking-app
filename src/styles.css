@@ -2501,3 +2501,7 @@ textarea:focus {
 .task-elapsed.is-paused {
   color: var(--text-subtle);
 }
+
+.field-required {
+  color: var(--danger-fg);
+}

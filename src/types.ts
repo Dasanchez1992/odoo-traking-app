@@ -76,6 +76,13 @@ export interface TimerContext {
   slaDeadline: string | false | null;
 }
 
+export interface UpdateStatus {
+  state: 'idle' | 'dev' | 'checking' | 'latest' | 'available' | 'downloading' | 'ready' | 'error';
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 export interface AppNotification {
   id: string;
   kind: string;
@@ -180,6 +187,12 @@ export interface ElectronApi {
   discardTimer: (key?: string) => Promise<TimerState[]>;
   pauseTimer: (key?: string) => Promise<TimerState>;
   resumeTimer: (key?: string) => Promise<TimerState>;
+
+  getAppVersion: () => Promise<string>;
+  getUpdateStatus: () => Promise<UpdateStatus>;
+  checkForUpdates: () => Promise<UpdateStatus>;
+  installUpdate: () => Promise<boolean>;
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 
   listNotifications: () => Promise<AppNotification[]>;
   markNotificationsRead: () => Promise<AppNotification[]>;
