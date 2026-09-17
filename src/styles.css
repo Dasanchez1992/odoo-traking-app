@@ -2209,3 +2209,20 @@ textarea:focus {
   word-break: break-word;
   user-select: text;
 }
+
+.attendance-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.attendance-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}

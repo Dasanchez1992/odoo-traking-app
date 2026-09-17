@@ -4,6 +4,9 @@ import { formatOdooTime, parseOdooDateTime } from '../lib/odooDate';
 import { formatDurationShort, useNow } from '../lib/format';
 import { IconAlert, IconClock, IconLogin, IconLogout } from './Icons';
 
+// Una jornada abierta más de esto casi siempre es una salida que nadie marcó.
+const LONG_SHIFT_HOURS = 12;
+
 export default function AttendanceCard() {
   const [status, setStatus] = useState<AttendanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,6 +18,8 @@ export default function AttendanceCard() {
   const unknownState = status !== null && !status.readable;
   const checkInDate = parseOdooDateTime(status?.open?.check_in ?? null);
   const now = useNow(isCheckedIn, 30000);
+  const openHours = checkInDate ? (now - checkInDate.getTime()) / 3600000 : 0;
+  const longShift = isCheckedIn && openHours > LONG_SHIFT_HOURS;
 
   async function refresh() {
     try {
@@ -90,6 +95,14 @@ export default function AttendanceCard() {
                 </span>
               )}
             </div>
+
+            {longShift && (
+              <span className="attendance-warning">
+                <IconAlert size={14} />
+                Llevas {Math.floor(openHours)} h fichado. Si olvidaste marcar la salida, hazlo ahora:
+                mientras siga abierta, Odoo no te dejará marcar una entrada nueva.
+              </span>
+            )}
 
             <span className="attendance-since">
               {unknownState
