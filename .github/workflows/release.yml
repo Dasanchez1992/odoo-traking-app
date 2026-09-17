@@ -9,6 +9,8 @@ jobs:
   publicar:
     name: Construir y publicar instalador
     runs-on: windows-latest
+    # Sin esto, una subida atascada deja el workflow corriendo hasta el límite de 6 horas.
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -98,8 +100,18 @@ jobs:
           } > release-notes.md
           cat release-notes.md
 
-      # latest.yml es lo que consulta electron-updater para saber si hay una versión nueva.
-      - name: Publicar en el repositorio de instaladores
+      # El instalador queda descargable desde Actions aunque la publicación falle.
+      - name: Guardar el instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: elideysi-instalador
+          path: |
+            release/*.exe
+            release/latest.yml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Crear el release en el repositorio de instaladores
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
@@ -107,16 +119,37 @@ jobs:
         run: |
           repo=$(node -p "const p=require('./package.json').build.publish[0]; p.owner + '/' + p.repo")
           tag="${GITHUB_REF_NAME}"
-          echo "Publicando $tag en $repo"
+          echo "repo=$repo" >> "$GITHUB_ENV"
 
-          # Reutiliza el release si una ejecución anterior lo dejó a medias.
           if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-            gh release upload "$tag" release/*.exe release/latest.yml --repo "$repo" --clobber
+            echo "El release ya existe; se actualizan las notas."
             gh release edit "$tag" --repo "$repo" --notes-file release-notes.md
           else
-            gh release create "$tag" release/*.exe release/latest.yml \
-              --repo "$repo" --title "$tag" --notes-file release-notes.md
+            gh release create "$tag" --repo "$repo" --title "$tag" --notes-file release-notes.md
           fi
+
+      # Los archivos se suben por separado y uno a uno: así el log dice cuál falla y cuánto
+      # tarda, en vez de quedarse en una única operación opaca que puede colgarse.
+      - name: Subir los archivos al release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          subir_url=$(gh release view "$tag" --repo "$repo" --json uploadUrl --jq .uploadUrl | sed 's/{.*}//')
+
+          for archivo in release/latest.yml release/*.exe release/*.blockmap; do
+            [ -f "$archivo" ] || continue
+            nombre=$(basename "$archivo")
+            echo "Subiendo $nombre ($(stat -c %s "$archivo") bytes)..."
+            curl -sS --fail-with-body --max-time 900 \
+              -X POST "${subir_url}?name=${nombre}" \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$archivo" \
+              -o /dev/null -w "  hecho en %{time_total}s (HTTP %{http_code})\n"
+          done
 
           echo "Publicado:"
           gh release view "$tag" --repo "$repo" --json assets --jq '.assets[] | "\(.name) — \(.size) bytes"'
