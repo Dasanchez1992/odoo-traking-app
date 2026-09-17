@@ -19,6 +19,7 @@ export interface OdooTask {
   priority: string;
   stage_id: [number, string] | false;
   partner_id?: [number, string] | false;
+  planned_date_begin?: string | false;
   allocated_hours?: number;
   effective_hours?: number;
   remaining_hours?: number;

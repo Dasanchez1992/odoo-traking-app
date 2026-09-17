@@ -10,7 +10,8 @@ import StopTimerDialog from '../components/StopTimerDialog';
 import TicketList from '../components/TicketList';
 import FocusTimer from '../components/FocusTimer';
 import { initialsOf } from '../lib/format';
-import { isPast, parseOdooDateTime } from '../lib/odooDate';
+import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
+import { DateFilter, matchesDateFilter } from '../lib/taskDates';
 import {
   IconAlert,
   IconLogout,
@@ -43,6 +44,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [stageFilter, setStageFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showNoProject, setShowNoProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -121,6 +123,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
   const visibleTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const today = ecuadorDateKey(new Date());
     return tasks.filter((task) => {
       if (!showOldOverdue && isOldOverdue(task)) return false;
       if (!showNoProject && !task.project_id) return false;
@@ -135,6 +138,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
         if (String(stageId) !== stageFilter) return false;
       }
 
+      if (!matchesDateFilter(task, dateFilter, today)) return false;
+
       if (query) {
         const haystack = `${task.name} ${task.project_id ? task.project_id[1] : ''}`.toLowerCase();
         if (!haystack.includes(query)) return false;
@@ -142,7 +147,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
       return true;
     });
-  }, [tasks, search, projectFilter, stageFilter, showOldOverdue, showNoProject]);
+  }, [tasks, search, projectFilter, stageFilter, dateFilter, showOldOverdue, showNoProject]);
 
   const isFiltered = visibleTasks.length !== tasks.length;
 
@@ -327,6 +332,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 stages={stages}
                 stageFilter={stageFilter}
                 onStageFilterChange={setStageFilter}
+                dateFilter={dateFilter}
+                onDateFilterChange={setDateFilter}
                 oldOverdueCount={oldOverdueCount}
                 showOldOverdue={showOldOverdue}
                 onToggleOldOverdue={() => setShowOldOverdue((v) => !v)}
@@ -342,7 +349,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 onRequestStop={() => setStopRequestedAt(Date.now())}
                 frozenAt={stopRequestedAt}
                 loading={loading}
-                filtered={isFiltered || search.trim() !== '' || projectFilter !== 'all' || stageFilter !== 'all'}
+                filtered={isFiltered || search.trim() !== '' || projectFilter !== 'all' || stageFilter !== 'all' || dateFilter !== 'all'}
               />
             </section>
           )}

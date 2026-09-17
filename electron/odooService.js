@@ -15,6 +15,9 @@ const TASK_FIELDS = [
 // project.task.state en Odoo 17+: '1_done' (hecha) y '1_canceled' (cancelada) son estados cerrados.
 const CLOSED_TASK_STATES = ['1_done', '1_canceled'];
 
+// planned_date_begin solo existe con la planificación de proyectos de Odoo Enterprise.
+const TASK_FIELDS_PLANNED = [...TASK_FIELDS, 'planned_date_begin'];
+
 // Odoo 16 y anteriores no tienen allocated_hours (se llamaba planned_hours).
 const TASK_FIELDS_BASIC = ['id', 'name', 'project_id', 'date_deadline', 'priority', 'stage_id'];
 
@@ -35,7 +38,7 @@ async function searchTasksWithFallback(client, extraDomain, order) {
     [['user_id', '=', client.uid], ...extraDomain],
   ];
   let lastError;
-  for (const fields of [TASK_FIELDS, TASK_FIELDS_BASIC]) {
+  for (const fields of [TASK_FIELDS_PLANNED, TASK_FIELDS, TASK_FIELDS_BASIC]) {
     for (const domain of domains) {
       try {
         return await client.execute_kw('project.task', 'search_read', [domain, fields], { order });

@@ -1,4 +1,5 @@
 import { IconEye, IconEyeOff, IconSearch } from './Icons';
+import { DATE_FILTER_LABELS, DateFilter } from '../lib/taskDates';
 
 interface Props {
   search: string;
@@ -9,6 +10,8 @@ interface Props {
   stages: Array<[number, string]>;
   stageFilter: string;
   onStageFilterChange: (value: string) => void;
+  dateFilter: DateFilter;
+  onDateFilterChange: (value: DateFilter) => void;
   oldOverdueCount: number;
   showOldOverdue: boolean;
   onToggleOldOverdue: () => void;
@@ -26,6 +29,8 @@ export default function TaskFilters({
   stages,
   stageFilter,
   onStageFilterChange,
+  dateFilter,
+  onDateFilterChange,
   oldOverdueCount,
   showOldOverdue,
   onToggleOldOverdue,
@@ -55,6 +60,19 @@ export default function TaskFilters({
         {projects.map(([id, name]) => (
           <option key={id} value={String(id)}>
             {name}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={dateFilter}
+        onChange={(e) => onDateFilterChange(e.target.value as DateFilter)}
+        aria-label="Filtrar por fecha"
+        title="«Para hoy» muestra lo que ya empezó o venció, incluyendo lo atrasado"
+      >
+        {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map((key) => (
+          <option key={key} value={key}>
+            {DATE_FILTER_LABELS[key]}
           </option>
         ))}
       </select>
