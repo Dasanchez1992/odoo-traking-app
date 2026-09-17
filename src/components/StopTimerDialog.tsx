@@ -3,7 +3,7 @@ import { TimerState } from '../types';
 import { formatStopwatch } from '../lib/format';
 import { IconAlert, IconClose, IconStop } from './Icons';
 
-const MIN_BILLABLE_MINUTES = 15;
+const MIN_BILLABLE_MINUTES = 5;
 
 interface Props {
   timer: TimerState;
@@ -73,7 +73,7 @@ export default function StopTimerDialog({ timer, stoppedAt, onRegistered, onCanc
 
           {appliesMinimum && (
             <p className="stop-minimum">
-              Se registrarán <strong>15 minutos</strong>, que es el mínimo por registro.
+              Se registrarán <strong>5 minutos</strong>, que es el mínimo por registro.
             </p>
           )}
 

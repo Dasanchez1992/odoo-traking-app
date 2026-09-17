@@ -1,4 +1,5 @@
-import { IconEye, IconEyeOff, IconSearch } from './Icons';
+import { useEffect, useRef, useState } from 'react';
+import { IconCheck, IconMore, IconSearch } from './Icons';
 import { DATE_FILTER_LABELS, DateFilter } from '../lib/taskDates';
 
 interface Props {
@@ -38,6 +39,44 @@ export default function TaskFilters({
   showNoProject,
   onToggleNoProject,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  const hiddenGroups = [
+    {
+      key: 'overdue',
+      label: 'Atrasadas +1 mes',
+      count: oldOverdueCount,
+      active: showOldOverdue,
+      onToggle: onToggleOldOverdue,
+    },
+    {
+      key: 'noproject',
+      label: 'Sin proyecto',
+      count: noProjectCount,
+      active: showNoProject,
+      onToggle: onToggleNoProject,
+    },
+  ].filter((group) => group.count > 0);
+
+  const someActive = hiddenGroups.some((group) => group.active);
+
   return (
     <div className="task-filters">
       <div className="search-field">
@@ -90,26 +129,39 @@ export default function TaskFilters({
         ))}
       </select>
 
-      {oldOverdueCount > 0 && (
-        <button
-          className="btn-secondary btn-sm"
-          onClick={onToggleOldOverdue}
-          title="Tareas con más de un mes de atraso"
-        >
-          {showOldOverdue ? <IconEyeOff size={14} /> : <IconEye size={14} />}
-          {showOldOverdue ? 'Ocultar atrasadas +1 mes' : `Atrasadas +1 mes (${oldOverdueCount})`}
-        </button>
-      )}
+      {hiddenGroups.length > 0 && (
+        <div className="filter-menu-wrap" ref={menuRef}>
+          <button
+            className={`btn-secondary btn-icon ${someActive ? 'has-marker' : ''}`}
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Más filtros"
+            aria-expanded={menuOpen}
+            title="Mostrar tareas que se ocultan por defecto"
+          >
+            <IconMore size={16} />
+          </button>
 
-      {noProjectCount > 0 && (
-        <button
-          className="btn-secondary btn-sm"
-          onClick={onToggleNoProject}
-          title="Tareas sin proyecto en Odoo: no admiten registro de tiempo"
-        >
-          {showNoProject ? <IconEyeOff size={14} /> : <IconEye size={14} />}
-          {showNoProject ? 'Ocultar sin proyecto' : `Sin proyecto (${noProjectCount})`}
-        </button>
+          {menuOpen && (
+            <div className="filter-menu" role="menu">
+              <div className="filter-menu-title">Mostrar además</div>
+              {hiddenGroups.map((group) => (
+                <button
+                  key={group.key}
+                  className={`filter-menu-item ${group.active ? 'is-active' : ''}`}
+                  onClick={group.onToggle}
+                  role="menuitemcheckbox"
+                  aria-checked={group.active}
+                >
+                  <span className="filter-menu-check">
+                    {group.active && <IconCheck size={13} />}
+                  </span>
+                  {group.label}
+                  <em>{group.count}</em>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

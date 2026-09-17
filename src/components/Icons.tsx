@@ -149,6 +149,24 @@ export function IconEyeOff({ size = 16, className }: IconProps) {
   );
 }
 
+export function IconMore({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconCheck({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+  );
+}
+
 export function IconExpand({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>

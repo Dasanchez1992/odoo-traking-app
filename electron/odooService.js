@@ -21,8 +21,9 @@ const TASK_FIELDS_PLANNED = [...TASK_FIELDS, 'planned_date_begin'];
 // Odoo 16 y anteriores no tienen allocated_hours (se llamaba planned_hours).
 const TASK_FIELDS_BASIC = ['id', 'name', 'project_id', 'date_deadline', 'priority', 'stage_id'];
 
-// Nada se registra por debajo de 15 minutos.
-const MIN_BILLABLE_HOURS = 0.25;
+// Nada se registra por debajo de 5 minutos.
+const MIN_BILLABLE_MINUTES = 5;
+const MIN_BILLABLE_HOURS = MIN_BILLABLE_MINUTES / 60;
 
 function toOdooUtcString(date) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -418,7 +419,14 @@ async function fetchTeamProductivity(client) {
   const employees = await client.execute_kw(
     'hr.employee',
     'search_read',
-    [[['active', '=', true]], ['name', 'user_id', 'department_id']],
+    [
+      // El propio usuario queda fuera: su detalle ya está en la pestaña de productividad.
+      [
+        ['active', '=', true],
+        ['user_id', '!=', client.uid],
+      ],
+      ['name', 'user_id', 'department_id'],
+    ],
     { limit: 400, order: 'name asc' },
   );
   const ids = employees.map((e) => e.id);
