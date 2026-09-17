@@ -1,6 +1,6 @@
 {
   "name": "elideysi",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Elideysi: app de escritorio para ver tareas asignadas en Odoo, registrar tiempo trabajado, fichar entrada/salida y recibir avisos de tareas caducadas",
   "main": "electron/main.js",
   "author": "Danilo Sanchez",
