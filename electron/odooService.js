@@ -350,6 +350,68 @@ async function toggleAttendance(client, employeeId) {
   }
 }
 
+// Reúne lo que Odoo sabe del fichaje del usuario para comparar con lo que muestra la web:
+// qué empleados tiene vinculados, qué dice el calculado de cada uno y qué entradas hay abiertas.
+async function diagnoseAttendance(client) {
+  const report = { uid: client.uid };
+
+  const [user] = await client.execute_kw('res.users', 'read', [
+    [client.uid],
+    ['name', 'login', 'employee_id', 'employee_ids', 'company_id', 'company_ids'],
+  ]);
+  report.user = {
+    name: user.name,
+    employee_id: user.employee_id,
+    employee_ids: user.employee_ids,
+    company_id: user.company_id,
+    company_ids: user.company_ids,
+  };
+
+  const employeeIds =
+    Array.isArray(user.employee_ids) && user.employee_ids.length
+      ? user.employee_ids
+      : user.employee_id
+        ? [user.employee_id[0]]
+        : [];
+
+  report.employees = [];
+  if (employeeIds.length) {
+    try {
+      report.employees = await client.execute_kw('hr.employee', 'read', [
+        employeeIds,
+        ['name', 'company_id', 'user_id', 'attendance_state', 'last_attendance_id'],
+      ]);
+    } catch (err) {
+      report.employeesError = err.message;
+    }
+
+    try {
+      report.openAttendances = await client.execute_kw('hr.attendance', 'search_read', [
+        [
+          ['employee_id', 'in', employeeIds],
+          ['check_out', '=', false],
+        ],
+        ['id', 'employee_id', 'check_in'],
+      ]);
+    } catch (err) {
+      report.openAttendancesError = err.message;
+    }
+
+    try {
+      report.lastAttendances = await client.execute_kw(
+        'hr.attendance',
+        'search_read',
+        [[['employee_id', 'in', employeeIds]], ['id', 'employee_id', 'check_in', 'check_out']],
+        { order: 'check_in desc', limit: 5 },
+      );
+    } catch (err) {
+      report.lastAttendancesError = err.message;
+    }
+  }
+
+  return report;
+}
+
 // Cierra un fichaje que quedó abierto, para salir del estado en el que Odoo ya no deja fichar.
 async function closeOpenAttendance(client, employeeId) {
   const records = await client.execute_kw(
@@ -584,4 +646,5 @@ module.exports = {
   getOpenAttendance,
   toggleAttendance,
   closeOpenAttendance,
+  diagnoseAttendance,
 };

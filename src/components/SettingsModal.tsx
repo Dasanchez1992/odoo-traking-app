@@ -8,6 +8,8 @@ interface Props {
 
 export default function SettingsModal({ onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [diagnosis, setDiagnosis] = useState<string | null>(null);
+  const [diagnosing, setDiagnosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -33,6 +35,18 @@ export default function SettingsModal({ onClose }: Props) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la configuración');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runDiagnosis() {
+    setDiagnosing(true);
+    try {
+      const report = await window.api.diagnoseAttendance();
+      setDiagnosis(JSON.stringify(report, null, 2));
+    } catch (err) {
+      setDiagnosis(err instanceof Error ? err.message : 'No se pudo generar el diagnóstico');
+    } finally {
+      setDiagnosing(false);
     }
   }
 
@@ -92,6 +106,30 @@ export default function SettingsModal({ onClose }: Props) {
                   onChange={() => toggle('remindersEnabled')}
                 />
               </label>
+
+              <div className="setting-row" style={{ display: 'block' }}>
+                <div className="setting-text">
+                  <strong>Diagnóstico de asistencia</strong>
+                  <span>
+                    Compara lo que ve la app con lo que ve Odoo: empleados vinculados a tu usuario,
+                    su estado de fichaje y las entradas abiertas.
+                  </span>
+                </div>
+                <div className="diagnosis-actions">
+                  <button className="btn-secondary btn-sm" onClick={runDiagnosis} disabled={diagnosing}>
+                    {diagnosing ? 'Consultando...' : 'Ejecutar diagnóstico'}
+                  </button>
+                  {diagnosis && (
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={() => navigator.clipboard.writeText(diagnosis).catch(() => {})}
+                    >
+                      Copiar resultado
+                    </button>
+                  )}
+                </div>
+                {diagnosis && <pre className="diagnosis-output">{diagnosis}</pre>}
+              </div>
 
               <p className="modal-note">
                 Al cerrar la ventana la aplicación sigue activa en la bandeja del sistema para poder

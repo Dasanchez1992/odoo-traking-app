@@ -2187,3 +2187,25 @@ textarea:focus {
   align-items: flex-start;
   gap: 8px;
 }
+
+.diagnosis-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.diagnosis-output {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}

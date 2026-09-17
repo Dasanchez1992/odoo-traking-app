@@ -144,6 +144,7 @@ export interface ElectronApi {
   getAttendanceStatus: () => Promise<AttendanceStatus>;
   toggleAttendance: () => Promise<{ action: 'check_in' | 'check_out' | 'toggled'; at: string }>;
   closeOpenAttendance: () => Promise<{ action: string; at: string; closedId: number }>;
+  diagnoseAttendance: () => Promise<Record<string, unknown>>;
 
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;

@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('api', {
   getAttendanceStatus: () => ipcRenderer.invoke('attendance:status'),
   toggleAttendance: () => ipcRenderer.invoke('attendance:toggle'),
   closeOpenAttendance: () => ipcRenderer.invoke('attendance:close-open'),
+  diagnoseAttendance: () => ipcRenderer.invoke('attendance:diagnose'),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),

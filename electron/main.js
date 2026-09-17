@@ -439,6 +439,10 @@ ipcMain.handle('attendance:status', async () => {
   }
 });
 
+ipcMain.handle('attendance:diagnose', async () => {
+  return odooService.diagnoseAttendance(requireClient());
+});
+
 ipcMain.handle('attendance:close-open', async () => {
   const c = requireClient();
   try {
