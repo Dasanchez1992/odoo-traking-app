@@ -21,6 +21,9 @@ const { createReminderScheduler } = require('./reminders');
 const { setupAutoUpdater } = require('./updater');
 
 const OVERDUE_POLL_MS = 5 * 60 * 1000;
+const REFRESH_MS = 5 * 60 * 1000;
+const LONG_SHIFT_HOURS = 12;
+const MAX_NOTIFICATIONS = 60;
 const APP_ID = 'com.elipsys.elideysi';
 
 let mainWindow = null;
@@ -30,9 +33,33 @@ let client = null;
 let overduePollTimer = null;
 let notifiedTaskIds = new Set();
 let isQuitting = false;
+let refreshTimer = null;
+// Historial de avisos, para poder revisarlos después de que el aviso del sistema desaparezca.
+let notifications = [];
+let notifiedKeys = new Set();
 
-let timerState = null; // { taskId, taskName, projectId, startedAt }
+// Varios cronómetros a la vez: solo uno corre (segmentStartedAt != null) y el resto queda
+// en pausa, para poder cambiar de tarea sin perder lo medido en la anterior.
+let timers = [];
 let stopInFlight = false;
+
+const timerKey = (kind, id) => `${kind}:${id}`;
+const findTimer = (key) => timers.find((t) => t.key === key) || null;
+const activeTimer = () => timers.find((t) => t.segmentStartedAt !== null) || null;
+
+function pauseTimerAt(timer, at) {
+  if (timer.segmentStartedAt === null) return timer;
+  return {
+    ...timer,
+    accumulatedMs: timer.accumulatedMs + Math.max(0, at - timer.segmentStartedAt),
+    segmentStartedAt: null,
+  };
+}
+
+function replaceTimer(next) {
+  timers = timers.map((t) => (t.key === next.key ? next : t));
+  return next;
+}
 
 const startedHidden = process.argv.includes('--hidden');
 
@@ -132,7 +159,7 @@ function createMiniWindow() {
 }
 
 function showMiniWindow() {
-  if (!timerState) return;
+  if (timers.length === 0) return;
   if (!miniWindow || miniWindow.isDestroyed()) createMiniWindow();
   miniWindow.showInactive();
 }
@@ -171,11 +198,89 @@ function requireClient() {
   return client;
 }
 
-function notify(title, body) {
+function broadcast(channel, payload) {
+  [mainWindow, miniWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  });
+}
+
+function recordNotification(kind, title, body) {
+  notifications = [
+    { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, kind, title, body, at: Date.now(), read: false },
+    ...notifications,
+  ].slice(0, MAX_NOTIFICATIONS);
+  broadcast('notifications:update', notifications);
+}
+
+function notify(title, body, kind = 'info') {
+  recordNotification(kind, title, body);
   if (!Notification.isSupported()) return;
   const notification = new Notification({ title, body });
   notification.on('click', showWindow);
   notification.show();
+}
+
+// Avisos que no vienen del escritorio pero conviene tener a mano: jornada sin cerrar y
+// actividades que vencen hoy. Cada uno se emite una sola vez al día.
+async function checkDailyAlerts() {
+  if (!client) return;
+  const today = new Date().toISOString().slice(0, 10);
+
+  try {
+    const employeeId = await odooService.getEmployeeId(client);
+    const open = await odooService.getOpenAttendance(client, employeeId);
+    if (open && open.check_in) {
+      const since = new Date(`${open.check_in.replace(' ', 'T')}Z`).getTime();
+      const hours = (Date.now() - since) / 3600000;
+      const key = `shift:${today}`;
+      if (hours > LONG_SHIFT_HOURS && !notifiedKeys.has(key)) {
+        notifiedKeys.add(key);
+        notify(
+          'Jornada sin cerrar',
+          `Llevas ${Math.floor(hours)} h fichado. Marca la salida para poder volver a fichar.`,
+          'attendance',
+        );
+      }
+    }
+  } catch {
+    // Sin permisos de asistencia no hay nada que avisar.
+  }
+
+  try {
+    const { available, activities } = await odooService.fetchActivities(client);
+    if (!available) return;
+    const dueToday = activities.filter((a) => a.state === 'today' || a.state === 'overdue');
+    const key = `activities:${today}:${dueToday.length}`;
+    if (dueToday.length > 0 && !notifiedKeys.has(key)) {
+      notifiedKeys.add(key);
+      notify(
+        'Actividades pendientes',
+        dueToday.length === 1
+          ? `«${dueToday[0].summary || 'Actividad'}» vence hoy`
+          : `Tienes ${dueToday.length} actividades que vencen hoy o están vencidas`,
+        'activity',
+      );
+    }
+  } catch {
+    // mail.activity puede no estar disponible para este usuario.
+  }
+}
+
+function startBackgroundRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (!client) return;
+    checkDailyAlerts();
+    // El renderer recarga sus listas al recibirlo.
+    broadcast('data:refresh', Date.now());
+  }, REFRESH_MS);
+}
+
+function stopBackgroundRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 }
 
 function applyStartAtLogin(enabled) {
@@ -208,6 +313,7 @@ function stopOverduePolling() {
     overduePollTimer = null;
   }
   notifiedTaskIds = new Set();
+  stopBackgroundRefresh();
 }
 
 async function pollOverdueTasks() {
@@ -219,9 +325,13 @@ async function pollOverdueTasks() {
 
     if (freshlyOverdue.length === 1) {
       const t = freshlyOverdue[0];
-      notify('Tarea caducada', `"${t.name}" venció el ${formatOdooDateTime(t.date_deadline)}`);
+      notify('Tarea caducada', `"${t.name}" venció el ${formatOdooDateTime(t.date_deadline)}`, 'task');
     } else if (freshlyOverdue.length > 1) {
-      notify('Tareas caducadas', `Tienes ${freshlyOverdue.length} tareas vencidas pendientes`);
+      notify(
+        'Tareas caducadas',
+        `Tienes ${freshlyOverdue.length} tareas vencidas pendientes`,
+        'task',
+      );
     }
 
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -235,6 +345,8 @@ async function pollOverdueTasks() {
 function startOverduePolling() {
   stopOverduePolling();
   pollOverdueTasks();
+  checkDailyAlerts();
+  startBackgroundRefresh();
   overduePollTimer = setInterval(pollOverdueTasks, OVERDUE_POLL_MS);
 }
 
@@ -272,7 +384,8 @@ ipcMain.handle('auth:restore', async () => {
 
 ipcMain.handle('auth:logout', async () => {
   client = null;
-  timerState = null;
+  timers = [];
+  hideMiniWindow();
   stopOverduePolling();
   sessionStore.clear();
   return true;
@@ -343,13 +456,35 @@ ipcMain.handle('tasks:open', async (_event, taskId) => {
   return url;
 });
 
-ipcMain.handle('timer:state', async () => timerState);
+ipcMain.handle('notifications:list', async () => notifications);
+
+ipcMain.handle('notifications:mark-read', async () => {
+  notifications = notifications.map((n) => ({ ...n, read: true }));
+  broadcast('notifications:update', notifications);
+  return notifications;
+});
+
+ipcMain.handle('notifications:clear', async () => {
+  notifications = [];
+  broadcast('notifications:update', notifications);
+  return notifications;
+});
+
+ipcMain.handle('timer:state', async () => timers);
 
 ipcMain.handle('timer:start', async (_event, item, kind = 'task') => {
-  if (timerState) {
-    throw new Error('Ya hay un cronómetro corriendo. Deténlo antes de iniciar otro.');
-  }
-  timerState = {
+  const key = timerKey(kind, item.id);
+  const now = Date.now();
+
+  // Cambiar de tarea pausa la anterior en vez de descartarla.
+  const active = activeTimer();
+  if (active && active.key !== key) replaceTimer(pauseTimerAt(active, now));
+
+  const existing = findTimer(key);
+  if (existing) return replaceTimer({ ...existing, segmentStartedAt: now });
+
+  const timer = {
+    key,
     kind,
     taskId: item.id,
     taskName: item.name,
@@ -372,56 +507,50 @@ ipcMain.handle('timer:start', async (_event, item, kind = 'task') => {
             : null,
       slaDeadline: item.sla_deadline || null,
     },
-    startedAt: Date.now(),
-    // El tiempo se acumula por segmentos: segmentStartedAt es null mientras está en pausa.
-    segmentStartedAt: Date.now(),
+    startedAt: now,
+    segmentStartedAt: now,
     accumulatedMs: 0,
   };
-  return timerState;
+  timers = [...timers, timer];
+  return timer;
 });
 
-ipcMain.handle('timer:pause', async () => {
-  if (!timerState) throw new Error('No hay ningún cronómetro corriendo');
-  if (timerState.segmentStartedAt === null) return timerState;
-
-  timerState = {
-    ...timerState,
-    accumulatedMs: timerState.accumulatedMs + Math.max(0, Date.now() - timerState.segmentStartedAt),
-    segmentStartedAt: null,
-  };
-  return timerState;
+ipcMain.handle('timer:pause', async (_event, key) => {
+  const timer = key ? findTimer(key) : activeTimer();
+  if (!timer) throw new Error('No hay ningún cronómetro corriendo');
+  return replaceTimer(pauseTimerAt(timer, Date.now()));
 });
 
-ipcMain.handle('timer:resume', async () => {
-  if (!timerState) throw new Error('No hay ningún cronómetro que reanudar');
-  if (timerState.segmentStartedAt !== null) return timerState;
+ipcMain.handle('timer:resume', async (_event, key) => {
+  const timer = key ? findTimer(key) : timers[0];
+  if (!timer) throw new Error('No hay ningún cronómetro que reanudar');
 
-  timerState = { ...timerState, segmentStartedAt: Date.now() };
-  return timerState;
+  const now = Date.now();
+  const active = activeTimer();
+  if (active && active.key !== timer.key) replaceTimer(pauseTimerAt(active, now));
+
+  return replaceTimer({ ...timer, segmentStartedAt: now });
 });
 
-ipcMain.handle('timer:stop', async (_event, { description, stoppedAt } = {}) => {
+ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt } = {}) => {
   if (stopInFlight) throw new Error('Ya se está registrando el tiempo, espera un momento');
-  if (!timerState) throw new Error('No hay ningún cronómetro corriendo');
+
+  const timer = key ? findTimer(key) : activeTimer() || timers[0];
+  if (!timer) throw new Error('No hay ningún cronómetro corriendo');
 
   // El cronómetro se detiene cuando se abre el diálogo, no cuando se confirma:
   // el rato que lleve escribir la descripción no cuenta como tiempo trabajado.
   const now = Date.now();
   const validStop =
-    Number.isFinite(stoppedAt) && stoppedAt >= timerState.startedAt && stoppedAt <= now
-      ? stoppedAt
-      : now;
+    Number.isFinite(stoppedAt) && stoppedAt >= timer.startedAt && stoppedAt <= now ? stoppedAt : now;
 
   const runningMs =
-    timerState.segmentStartedAt === null
-      ? 0
-      : Math.max(0, validStop - timerState.segmentStartedAt);
-  const elapsedMs = timerState.accumulatedMs + runningMs;
+    timer.segmentStartedAt === null ? 0 : Math.max(0, validStop - timer.segmentStartedAt);
+  const elapsedMs = timer.accumulatedMs + runningMs;
 
-  const finished = { ...timerState, stoppedAt: validStop, elapsedMs, description };
+  const finished = { ...timer, stoppedAt: validStop, elapsedMs, description };
   stopInFlight = true;
   try {
-    hideMiniWindow();
     const record =
       finished.kind === 'ticket'
         ? await odooService.logTicketTimesheet(requireClient(), {
@@ -429,46 +558,22 @@ ipcMain.handle('timer:stop', async (_event, { description, stoppedAt } = {}) => 
             ticketId: finished.taskId,
           })
         : await odooService.logTimesheet(requireClient(), finished);
+
     // El cronómetro se descarta solo cuando Odoo confirmó el registro.
-    timerState = null;
+    timers = timers.filter((t) => t.key !== finished.key);
+    if (timers.length === 0) hideMiniWindow();
     return { ...finished, timesheetId: record };
   } finally {
     stopInFlight = false;
   }
 });
 
-ipcMain.handle('timer:discard', async () => {
-  timerState = null;
-  hideMiniWindow();
-  return true;
+ipcMain.handle('timer:discard', async (_event, key) => {
+  const timer = key ? findTimer(key) : activeTimer() || timers[0];
+  if (timer) timers = timers.filter((t) => t.key !== timer.key);
+  if (timers.length === 0) hideMiniWindow();
+  return timers;
 });
-
-ipcMain.handle('mini:show-main', async () => {
-  hideMiniWindow();
-  showWindow();
-  return true;
-});
-
-ipcMain.handle('mini:request-stop', async () => {
-  hideMiniWindow();
-  showWindow();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('timer:stop-requested');
-  }
-  return true;
-});
-
-// El error de permisos de Odoo es largo y técnico; se traduce a algo accionable.
-function attendanceError(err) {
-  const msg = err.message || '';
-  if (/attendance/i.test(msg) && /acce|permis|allowed|derecho|grupo/i.test(msg)) {
-    return new Error(
-      'Tu usuario de Odoo no tiene permisos sobre Asistencias. Pide al administrador que te ' +
-        'asigne el grupo «Asistencias → Usuario: Leer sus propias asistencias».',
-    );
-  }
-  return err;
-}
 
 ipcMain.handle('attendance:status', async () => {
   const c = requireClient();
@@ -561,6 +666,7 @@ if (!gotLock) {
 app.on('before-quit', () => {
   isQuitting = true;
   stopOverduePolling();
+  stopBackgroundRefresh();
   reminders.stop();
 });
 

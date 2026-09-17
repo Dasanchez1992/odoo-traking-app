@@ -5,13 +5,22 @@ import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
 import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
 
 interface Props {
-  timer: TimerState | null;
-  onTimerChange: (timer: TimerState | null) => void;
+  timers: TimerState[];
+  onTimersChange: (timers: TimerState[]) => void;
+  onTimerStarted: () => void;
   onRequestStop: () => void;
   frozenAt: number | null;
+  refreshSignal: number;
 }
 
-export default function TicketList({ timer, onTimerChange, onRequestStop, frozenAt }: Props) {
+export default function TicketList({
+  timers,
+  onTimersChange,
+  onTimerStarted,
+  onRequestStop,
+  frozenAt,
+  refreshSignal,
+}: Props) {
   const [result, setResult] = useState<TicketsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +28,8 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
   const [stageFilter, setStageFilter] = useState('all');
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const now = useNow(timer !== null && timer.segmentStartedAt !== null && frozenAt === null);
+  const running = timers.some((t) => t.segmentStartedAt !== null);
+  const now = useNow(running && frozenAt === null);
   const displayNow = frozenAt ?? now;
 
   useEffect(() => {
@@ -28,7 +38,7 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
       .then(setResult)
       .catch((err) => setError(err instanceof Error ? err.message : 'No se pudieron cargar'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshSignal]);
 
   const stages = useMemo(() => {
     const map = new Map<number, string>();
@@ -58,7 +68,8 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
     setError(null);
     setBusyId(ticket.id);
     try {
-      onTimerChange(await window.api.startTimer(ticket, 'ticket'));
+      await window.api.startTimer(ticket, 'ticket');
+      onTimerStarted();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo iniciar el cronómetro');
     } finally {
@@ -151,7 +162,10 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
           </div>
 
           {visible.map((ticket) => {
-            const isRunning = timer?.kind === 'ticket' && timer.taskId === ticket.id;
+            const ticketTimer =
+              timers.find((t) => t.kind === 'ticket' && t.taskId === ticket.id) ?? null;
+            const isRunning = ticketTimer !== null && ticketTimer.segmentStartedAt !== null;
+            const isPaused = ticketTimer !== null && ticketTimer.segmentStartedAt === null;
 
             return (
               <div key={ticket.id} className={`ticket-row ${isRunning ? 'is-running' : ''}`}>
@@ -194,9 +208,9 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
                 </div>
 
                 <div className="task-action">
-                  {isRunning && (
-                    <span className="task-elapsed">
-                      {formatElapsed(timerElapsedMs(timer, displayNow))}
+                  {ticketTimer && (
+                    <span className={`task-elapsed ${isPaused ? 'is-paused' : ''}`}>
+                      {formatElapsed(timerElapsedMs(ticketTimer, displayNow))}
                     </span>
                   )}
                   {isRunning ? (
@@ -208,13 +222,15 @@ export default function TicketList({ timer, onTimerChange, onRequestStop, frozen
                     <button
                       className="btn-secondary btn-sm"
                       onClick={() => handleStart(ticket)}
-                      disabled={busyId === ticket.id || timer !== null}
+                      disabled={busyId === ticket.id}
                       title={
-                        timer !== null ? 'Detén el cronómetro en curso para iniciar otro' : undefined
+                        isPaused
+                          ? 'Reanudar el cronómetro de este ticket'
+                          : 'Al iniciar, el cronómetro en curso se pausa'
                       }
                     >
                       <IconPlay size={12} />
-                      Iniciar
+                      {isPaused ? 'Reanudar' : 'Iniciar'}
                     </button>
                   )}
                 </div>

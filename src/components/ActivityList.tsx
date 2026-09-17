@@ -30,7 +30,11 @@ function stateLabel(state: string) {
   return 'Planificada';
 }
 
-export default function ActivityList() {
+interface Props {
+  refreshSignal: number;
+}
+
+export default function ActivityList({ refreshSignal }: Props) {
   const [result, setResult] = useState<ActivitiesResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +56,7 @@ export default function ActivityList() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [refreshSignal]);
 
   const activities = result?.activities ?? [];
 

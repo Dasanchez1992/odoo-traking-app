@@ -6,8 +6,9 @@ import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } fr
 
 interface Props {
   tasks: OdooTask[];
-  timer: TimerState | null;
-  onTimerChange: (timer: TimerState | null) => void;
+  timers: TimerState[];
+  onTimersChange: (timers: TimerState[]) => void;
+  onTimerStarted: () => void;
   onRequestStop: () => void;
   frozenAt: number | null;
   loading: boolean;
@@ -16,8 +17,9 @@ interface Props {
 
 export default function TaskList({
   tasks,
-  timer,
-  onTimerChange,
+  timers,
+  onTimersChange,
+  onTimerStarted,
   onRequestStop,
   frozenAt,
   loading,
@@ -25,14 +27,17 @@ export default function TaskList({
 }: Props) {
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const now = useNow(timer !== null && timer.segmentStartedAt !== null && frozenAt === null);
+  const running = timers.some((t) => t.segmentStartedAt !== null);
+  const now = useNow(running && frozenAt === null);
   const displayNow = frozenAt ?? now;
 
+  // Iniciar otra tarea pausa la anterior en vez de perderla, así que basta con arrancar.
   async function handleStart(task: OdooTask) {
     setError(null);
     setBusyTaskId(task.id);
     try {
-      onTimerChange(await window.api.startTimer(task));
+      await window.api.startTimer(task);
+      onTimerStarted();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo iniciar el cronómetro');
     } finally {
@@ -83,7 +88,9 @@ export default function TaskList({
       </div>
 
       {tasks.map((task) => {
-        const isRunning = timer?.kind === 'task' && timer.taskId === task.id;
+        const taskTimer = timers.find((t) => t.kind === 'task' && t.taskId === task.id) ?? null;
+        const isRunning = taskTimer !== null && taskTimer.segmentStartedAt !== null;
+        const isPaused = taskTimer !== null && taskTimer.segmentStartedAt === null;
         const overdue = isPast(task.date_deadline);
         const isBusy = busyTaskId === task.id;
         // Odoo exige proyecto en las hojas de horas: sin él el tiempo no se podría registrar.
@@ -131,9 +138,9 @@ export default function TaskList({
             </div>
 
             <div className="task-action">
-              {isRunning && (
-                <span className="task-elapsed">
-                  {formatElapsed(timerElapsedMs(timer, displayNow))}
+              {taskTimer && (
+                <span className={`task-elapsed ${isPaused ? 'is-paused' : ''}`}>
+                  {formatElapsed(timerElapsedMs(taskTimer, displayNow))}
                 </span>
               )}
               {isRunning ? (
@@ -145,17 +152,17 @@ export default function TaskList({
                 <button
                   className="btn-secondary btn-sm"
                   onClick={() => handleStart(task)}
-                  disabled={isBusy || timer !== null || noProject}
+                  disabled={isBusy || noProject}
                   title={
                     noProject
                       ? 'Esta tarea no tiene proyecto en Odoo. Asígnale uno para poder registrar tiempo.'
-                      : timer !== null
-                        ? 'Detén el cronómetro en curso para iniciar otro'
-                        : undefined
+                      : isPaused
+                        ? 'Reanudar el cronómetro de esta tarea'
+                        : 'Al iniciar, el cronómetro en curso se pausa'
                   }
                 >
                   <IconPlay size={12} />
-                  Iniciar
+                  {isPaused ? 'Reanudar' : 'Iniciar'}
                 </button>
               )}
             </div>

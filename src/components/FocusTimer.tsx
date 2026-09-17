@@ -10,7 +10,7 @@ interface Props {
   onRequestStop: () => void;
   onDiscarded: () => void;
   onExit: () => void;
-  onTimerChange: (timer: TimerState) => void;
+  onTimersChange: (timers: TimerState[]) => void;
 }
 
 function formatHours(hours: number) {
@@ -44,7 +44,7 @@ export default function FocusTimer({
   onRequestStop,
   onDiscarded,
   onExit,
-  onTimerChange,
+  onTimersChange,
 }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const paused = timer.segmentStartedAt === null;
@@ -74,12 +74,14 @@ export default function FocusTimer({
   }, [onExit]);
 
   async function handleDiscard() {
-    await window.api.discardTimer();
+    await window.api.discardTimer(timer.key);
     onDiscarded();
   }
 
   async function togglePause() {
-    onTimerChange(paused ? await window.api.resumeTimer() : await window.api.pauseTimer());
+    if (paused) await window.api.resumeTimer(timer.key);
+    else await window.api.pauseTimer(timer.key);
+    onTimersChange(await window.api.getTimerState());
   }
 
   return (

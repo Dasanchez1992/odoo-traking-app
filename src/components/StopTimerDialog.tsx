@@ -40,7 +40,7 @@ export default function StopTimerDialog({
   async function handleDiscard() {
     setSaving(true);
     try {
-      await window.api.discardTimer();
+      await window.api.discardTimer(timer.key);
       onDiscarded();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo descartar el tiempo');
@@ -53,7 +53,7 @@ export default function StopTimerDialog({
     setSaving(true);
     setError(null);
     try {
-      await window.api.stopTimer({ description, stoppedAt });
+      await window.api.stopTimer({ key: timer.key, description, stoppedAt });
       onRegistered();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar el tiempo');

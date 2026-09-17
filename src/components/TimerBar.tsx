@@ -9,7 +9,8 @@ interface Props {
   onRequestStop: () => void;
   onDiscarded: () => void;
   onEnterFocus: () => void;
-  onTimerChange: (timer: TimerState) => void;
+  onTimersChange: (timers: TimerState[]) => void;
+  pausedCount: number;
 }
 
 export default function TimerBar({
@@ -18,7 +19,8 @@ export default function TimerBar({
   onRequestStop,
   onDiscarded,
   onEnterFocus,
-  onTimerChange,
+  onTimersChange,
+  pausedCount,
 }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const paused = timer.segmentStartedAt === null;
@@ -26,12 +28,14 @@ export default function TimerBar({
   const displayNow = frozenAt ?? now;
 
   async function handleDiscard() {
-    await window.api.discardTimer();
+    await window.api.discardTimer(timer.key);
     onDiscarded();
   }
 
   async function togglePause() {
-    onTimerChange(paused ? await window.api.resumeTimer() : await window.api.pauseTimer());
+    if (paused) await window.api.resumeTimer(timer.key);
+    else await window.api.pauseTimer(timer.key);
+    onTimersChange(await window.api.getTimerState());
   }
 
   return (
@@ -49,6 +53,11 @@ export default function TimerBar({
           </div>
           <div className="timer-bar-task" title={timer.taskName}>
             {timer.taskName}
+            {pausedCount > 0 && (
+              <span className="timer-bar-others">
+                +{pausedCount} en pausa
+              </span>
+            )}
           </div>
         </div>
       </div>

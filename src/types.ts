@@ -76,7 +76,17 @@ export interface TimerContext {
   slaDeadline: string | false | null;
 }
 
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  at: number;
+  read: boolean;
+}
+
 export interface TimerState {
+  key: string;
   kind: TimerKind;
   taskId: number;
   taskName: string;
@@ -157,18 +167,25 @@ export interface ElectronApi {
   canManageTeam: () => Promise<boolean>;
   getTeamSummary: () => Promise<TeamSummary>;
 
-  getTimerState: () => Promise<TimerState | null>;
+  getTimerState: () => Promise<TimerState[]>;
   startTimer: (item: OdooTask | OdooTicket, kind?: TimerKind) => Promise<TimerState>;
 
   listTickets: () => Promise<TicketsResult>;
   openTicketInOdoo: (ticketId: number) => Promise<string>;
   stopTimer: (payload?: {
+    key?: string;
     description?: string;
     stoppedAt?: number;
   }) => Promise<TimerState & { stoppedAt: number; timesheetId: number }>;
-  discardTimer: () => Promise<boolean>;
-  pauseTimer: () => Promise<TimerState>;
-  resumeTimer: () => Promise<TimerState>;
+  discardTimer: (key?: string) => Promise<TimerState[]>;
+  pauseTimer: (key?: string) => Promise<TimerState>;
+  resumeTimer: (key?: string) => Promise<TimerState>;
+
+  listNotifications: () => Promise<AppNotification[]>;
+  markNotificationsRead: () => Promise<AppNotification[]>;
+  clearNotifications: () => Promise<AppNotification[]>;
+  onNotificationsUpdate: (callback: (items: AppNotification[]) => void) => () => void;
+  onDataRefresh: (callback: () => void) => () => void;
 
   getAttendanceStatus: () => Promise<AttendanceStatus>;
   toggleAttendance: () => Promise<{ action: 'check_in' | 'check_out' | 'toggled'; at: string }>;

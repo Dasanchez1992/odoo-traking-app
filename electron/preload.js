@@ -22,9 +22,13 @@ contextBridge.exposeInMainWorld('api', {
   getTimerState: () => ipcRenderer.invoke('timer:state'),
   startTimer: (item, kind) => ipcRenderer.invoke('timer:start', item, kind),
   stopTimer: (payload) => ipcRenderer.invoke('timer:stop', payload),
-  discardTimer: () => ipcRenderer.invoke('timer:discard'),
-  pauseTimer: () => ipcRenderer.invoke('timer:pause'),
-  resumeTimer: () => ipcRenderer.invoke('timer:resume'),
+  discardTimer: (key) => ipcRenderer.invoke('timer:discard', key),
+  pauseTimer: (key) => ipcRenderer.invoke('timer:pause', key),
+  resumeTimer: (key) => ipcRenderer.invoke('timer:resume', key),
+
+  listNotifications: () => ipcRenderer.invoke('notifications:list'),
+  markNotificationsRead: () => ipcRenderer.invoke('notifications:mark-read'),
+  clearNotifications: () => ipcRenderer.invoke('notifications:clear'),
 
   getAttendanceStatus: () => ipcRenderer.invoke('attendance:status'),
   toggleAttendance: () => ipcRenderer.invoke('attendance:toggle'),
@@ -36,6 +40,18 @@ contextBridge.exposeInMainWorld('api', {
 
   showMainWindow: () => ipcRenderer.invoke('mini:show-main'),
   requestStopFromMini: () => ipcRenderer.invoke('mini:request-stop'),
+
+  onNotificationsUpdate: (callback) => {
+    const listener = (_event, items) => callback(items);
+    ipcRenderer.on('notifications:update', listener);
+    return () => ipcRenderer.removeListener('notifications:update', listener);
+  },
+
+  onDataRefresh: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('data:refresh', listener);
+    return () => ipcRenderer.removeListener('data:refresh', listener);
+  },
 
   onStopRequested: (callback) => {
     const listener = () => callback();

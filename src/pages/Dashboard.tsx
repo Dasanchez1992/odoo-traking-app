@@ -11,6 +11,7 @@ import TicketList from '../components/TicketList';
 import FocusTimer from '../components/FocusTimer';
 import TeamPanel from '../components/TeamPanel';
 import ActivityList from '../components/ActivityList';
+import NotificationsMenu from '../components/NotificationsMenu';
 import { initialsOf } from '../lib/format';
 import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
 import { DateFilter, matchesDateFilter } from '../lib/taskDates';
@@ -39,7 +40,9 @@ function isOldOverdue(task: OdooTask) {
 export default function Dashboard({ user, onLoggedOut }: Props) {
   const [tasks, setTasks] = useState<OdooTask[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<OdooTask[]>([]);
-  const [timer, setTimer] = useState<TimerState | null>(null);
+  const [timers, setTimers] = useState<TimerState[]>([]);
+  // Señal para que las listas hijas recarguen cuando el refresco de fondo avisa.
+  const [refreshSignal, setRefreshSignal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,28 +60,35 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
   const [canManageTeam, setCanManageTeam] = useState(false);
 
+  // El activo es el único que corre; los demás quedaron en pausa al cambiar de tarea.
+  const timer = timers.find((t) => t.segmentStartedAt !== null) ?? timers[0] ?? null;
+
+  async function refreshTimers() {
+    setTimers(await window.api.getTimerState());
+  }
+
   // Iniciar un cronómetro entra directo a la vista de enfoque; detenerlo o descartarlo la cierra.
-  function handleTimerChange(next: TimerState | null) {
-    setTimer(next);
-    setFocusMode(next !== null);
+  function handleTimerStarted() {
+    refreshTimers();
+    setFocusMode(true);
   }
 
   function clearTimer() {
     setStopRequestedAt(null);
     setFocusMode(false);
-    setTimer(null);
+    refreshTimers();
   }
 
   async function loadAll() {
     setError(null);
     setLoading(true);
     try {
-      const [taskList, timerState] = await Promise.all([
+      const [taskList, timerList] = await Promise.all([
         window.api.listTasks(),
         window.api.getTimerState(),
       ]);
       setTasks(taskList);
-      setTimer(timerState);
+      setTimers(timerList);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar las tareas');
     } finally {
@@ -91,11 +101,16 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     const unsubscribe = window.api.onOverdueUpdate(setOverdueTasks);
     // Detener desde la miniatura flotante abre aquí el diálogo de descripción.
     const unsubscribeStop = window.api.onStopRequested(() => setStopRequestedAt(Date.now()));
+    const unsubscribeRefresh = window.api.onDataRefresh(() => {
+      loadAll();
+      setRefreshSignal((n) => n + 1);
+    });
     window.api.listOverdueTasks().then(setOverdueTasks).catch(() => {});
     window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
     return () => {
       unsubscribe();
       unsubscribeStop();
+      unsubscribeRefresh();
     };
   }, []);
 
@@ -187,6 +202,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           ) : (
             <span className="avatar">{initialsOf(user.name)}</span>
           )}
+
+          <NotificationsMenu />
 
           <button
             className="btn-ghost btn-icon"
@@ -319,8 +336,10 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               </div>
 
               <TicketList
-                timer={timer}
-                onTimerChange={handleTimerChange}
+                timers={timers}
+                onTimersChange={setTimers}
+                onTimerStarted={handleTimerStarted}
+                refreshSignal={refreshSignal}
                 onRequestStop={() => setStopRequestedAt(Date.now())}
                 frozenAt={stopRequestedAt}
               />
@@ -334,13 +353,13 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                   <h2>Mis actividades</h2>
                 </div>
               </div>
-              <ActivityList />
+              <ActivityList refreshSignal={refreshSignal} />
             </section>
           )}
 
-          {tab === 'productivity' && <ProductivityPanel />}
+          {tab === 'productivity' && <ProductivityPanel key={refreshSignal} />}
 
-          {tab === 'team' && canManageTeam && <TeamPanel />}
+          {tab === 'team' && canManageTeam && <TeamPanel key={refreshSignal} />}
 
           {tab === 'tasks' && (
             <section className="card">
@@ -380,8 +399,9 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
               <TaskList
                 tasks={visibleTasks}
-                timer={timer}
-                onTimerChange={handleTimerChange}
+                timers={timers}
+                onTimersChange={setTimers}
+                onTimerStarted={handleTimerStarted}
                 onRequestStop={() => setStopRequestedAt(Date.now())}
                 frozenAt={stopRequestedAt}
                 loading={loading}
@@ -399,7 +419,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           onRequestStop={() => setStopRequestedAt(Date.now())}
           onDiscarded={clearTimer}
           onEnterFocus={() => setFocusMode(true)}
-          onTimerChange={setTimer}
+          onTimersChange={setTimers}
+          pausedCount={timers.filter((t) => t.key !== timer.key).length}
         />
       )}
 
@@ -410,7 +431,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           onRequestStop={() => setStopRequestedAt(Date.now())}
           onDiscarded={clearTimer}
           onExit={() => setFocusMode(false)}
-          onTimerChange={setTimer}
+          onTimersChange={setTimers}
         />
       )}
 

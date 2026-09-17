@@ -13,8 +13,9 @@ export default function MiniTimer() {
     const sync = () => {
       window.api
         .getTimerState()
-        .then((state) => {
-          if (!cancelled) setTimer(state);
+        .then((list) => {
+          if (cancelled) return;
+          setTimer(list.find((t) => t.segmentStartedAt !== null) ?? list[0] ?? null);
         })
         .catch(() => {});
     };
@@ -54,9 +55,13 @@ export default function MiniTimer() {
         <div className="mini-actions">
           <button
             className="mini-btn"
-            onClick={async () =>
-              setTimer(paused ? await window.api.resumeTimer() : await window.api.pauseTimer())
-            }
+            onClick={async () => {
+              if (!timer) return;
+              const next = paused
+                ? await window.api.resumeTimer(timer.key)
+                : await window.api.pauseTimer(timer.key);
+              setTimer(next);
+            }}
             title={paused ? 'Reanudar' : 'Pausar'}
             aria-label={paused ? 'Reanudar' : 'Pausar'}
           >
