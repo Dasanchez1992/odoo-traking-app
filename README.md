@@ -87,7 +87,9 @@ El código fuente sigue siendo privado; ese repositorio solo recibe el `.exe` y 
 
 ### Puesta en marcha (una sola vez)
 
-1. Crear en GitHub el repositorio **público** `odoo-traking-app-release` (puede estar vacío).
+1. Crear en GitHub el repositorio **público** `odoo-traking-app-release` **con al menos un commit**
+   (por ejemplo, marcando «Add a README file» al crearlo). GitHub rechaza crear releases en un
+   repositorio vacío, y la publicación falla con «Repository is empty».
 2. Generar un token de acceso personal con permiso de escritura de contenido sobre ese repositorio
    (fine-grained: *Contents: Read and write*).
 3. En este repositorio, guardarlo en *Settings → Secrets and variables → Actions* con el nombre
