@@ -3,6 +3,11 @@ import { TimerState } from './types';
 import { formatElapsed, timerElapsedMs, useNow } from './lib/format';
 import { IconExpand, IconPause, IconPlay, IconStop } from './components/Icons';
 
+// Sin esto, un canal roto deja el botón mudo y el fallo pasa desapercibido.
+function reportar(accion: string, promesa: Promise<unknown>) {
+  promesa.catch((err) => console.error(`Falló «${accion}» desde la miniatura:`, err));
+}
+
 export default function MiniTimer() {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const paused = timer?.segmentStartedAt === null;
@@ -55,13 +60,14 @@ export default function MiniTimer() {
         <div className="mini-actions">
           <button
             className="mini-btn"
-            onClick={async () => {
-              if (!timer) return;
-              const next = paused
-                ? await window.api.resumeTimer(timer.key)
-                : await window.api.pauseTimer(timer.key);
-              setTimer(next);
-            }}
+            onClick={() =>
+              reportar(
+                paused ? 'reanudar' : 'pausar',
+                (paused ? window.api.resumeTimer(timer.key) : window.api.pauseTimer(timer.key)).then(
+                  setTimer,
+                ),
+              )
+            }
             title={paused ? 'Reanudar' : 'Pausar'}
             aria-label={paused ? 'Reanudar' : 'Pausar'}
           >
@@ -69,7 +75,7 @@ export default function MiniTimer() {
           </button>
           <button
             className="mini-btn is-stop"
-            onClick={() => window.api.requestStopFromMini()}
+            onClick={() => reportar('detener', window.api.requestStopFromMini())}
             title="Detener y registrar"
             aria-label="Detener y registrar"
           >
@@ -77,7 +83,7 @@ export default function MiniTimer() {
           </button>
           <button
             className="mini-btn"
-            onClick={() => window.api.showMainWindow()}
+            onClick={() => reportar('abrir la app', window.api.showMainWindow())}
             title="Abrir Elideysi"
             aria-label="Abrir Elideysi"
           >

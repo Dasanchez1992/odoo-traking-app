@@ -588,6 +588,22 @@ ipcMain.handle('timer:discard', async (_event, key) => {
   return timers;
 });
 
+// La miniatura no puede abrir diálogos: delega en la ventana principal.
+ipcMain.handle('mini:show-main', async () => {
+  hideMiniWindow();
+  showWindow();
+  return true;
+});
+
+ipcMain.handle('mini:request-stop', async () => {
+  hideMiniWindow();
+  showWindow();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('timer:stop-requested');
+  }
+  return true;
+});
+
 ipcMain.handle('attendance:status', async () => {
   const c = requireClient();
   const employeeId = await odooService.getEmployeeId(c);

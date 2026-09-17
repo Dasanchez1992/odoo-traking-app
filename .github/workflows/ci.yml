@@ -27,6 +27,9 @@ jobs:
       - name: Revisar sintaxis del proceso principal
         run: for f in electron/*.js; do node --check "$f"; done
 
+      - name: Comprobar los canales IPC
+        run: npm run check:ipc
+
       - name: Compilar la interfaz
         run: npm run build
 
