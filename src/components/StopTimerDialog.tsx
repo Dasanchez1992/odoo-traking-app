@@ -25,9 +25,15 @@ export default function StopTimerDialog({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  const elapsedMs = timerElapsedMs(timer, stoppedAt);
+  const medidoMs = timerElapsedMs(timer, stoppedAt);
+  // El cronómetro es una propuesta: el usuario ajusta la duración antes de registrarla.
+  const [horas, setHoras] = useState(() => Math.floor(medidoMs / 3600000));
+  const [minutos, setMinutos] = useState(() => Math.round((medidoMs % 3600000) / 60000));
+
+  const elapsedMs = (horas * 60 + minutos) * 60000;
   const elapsedMinutes = elapsedMs / 60000;
-  const appliesMinimum = elapsedMinutes < MIN_BILLABLE_MINUTES;
+  const appliesMinimum = elapsedMinutes > 0 && elapsedMinutes < MIN_BILLABLE_MINUTES;
+  const ajustado = Math.abs(elapsedMs - medidoMs) >= 60000;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -56,10 +62,14 @@ export default function StopTimerDialog({
       setError('Describe el trabajo realizado antes de registrarlo.');
       return;
     }
+    if (elapsedMinutes <= 0) {
+      setError('Indica cuánto tiempo dedicaste a la tarea.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await window.api.stopTimer({ key: timer.key, description, stoppedAt });
+      await window.api.stopTimer({ key: timer.key, description, stoppedAt, elapsedMs });
       onRegistered();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar el tiempo');
@@ -94,7 +104,51 @@ export default function StopTimerDialog({
             <div className="stop-summary-task" title={timer.taskName}>
               {timer.taskName}
             </div>
-            <div className="stop-summary-time">{formatElapsed(elapsedMs)}</div>
+            <div className="stop-summary-time">{formatElapsed(medidoMs)}</div>
+          </div>
+
+          <div className="stop-duration">
+            <span className="field-label">Tiempo a registrar</span>
+            <div className="stop-duration-fields">
+              <input
+                type="number"
+                min={0}
+                max={23}
+                value={horas}
+                onChange={(e) => setHoras(Math.max(0, Math.min(23, Number(e.target.value) || 0)))}
+                disabled={saving}
+                aria-label="Horas"
+              />
+              <span>h</span>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={minutos}
+                onChange={(e) => setMinutos(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
+                disabled={saving}
+                aria-label="Minutos"
+              />
+              <span>min</span>
+              {ajustado && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => {
+                    setHoras(Math.floor(medidoMs / 3600000));
+                    setMinutos(Math.round((medidoMs % 3600000) / 60000));
+                  }}
+                  disabled={saving}
+                >
+                  Usar lo medido
+                </button>
+              )}
+            </div>
+            {ajustado && (
+              <span className="field-hint">
+                Se registrará este tiempo en lugar de los {formatElapsed(medidoMs)} del cronómetro.
+              </span>
+            )}
           </div>
 
           {appliesMinimum && (

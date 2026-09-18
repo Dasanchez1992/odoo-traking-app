@@ -6,6 +6,9 @@ import { IconAlert, IconClock, IconLogin, IconLogout } from './Icons';
 
 // Una jornada abierta más de esto casi siempre es una salida que nadie marcó.
 const LONG_SHIFT_HOURS = 12;
+// El fichaje también se hace desde Odoo o desde el móvil, así que hay que releerlo a menudo
+// para no quedarse mostrando una jornada que ya se cerró en otro sitio.
+const SYNC_MS = 60 * 1000;
 
 export default function AttendanceCard() {
   const [status, setStatus] = useState<AttendanceStatus | null>(null);
@@ -23,8 +26,11 @@ export default function AttendanceCard() {
 
   async function refresh() {
     try {
-      setStatus(await window.api.getAttendanceStatus());
+      const next = await window.api.getAttendanceStatus();
+      setStatus(next);
       setError(null);
+      // Si Odoo ya no reporta una entrada abierta, el atasco quedó resuelto fuera de la app.
+      if (!next.open) setStuckOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo leer el estado de asistencia');
     } finally {
@@ -34,6 +40,18 @@ export default function AttendanceCard() {
 
   useEffect(() => {
     refresh();
+
+    const id = setInterval(refresh, SYNC_MS);
+    const unsubscribe = window.api.onDataRefresh(refresh);
+    // Al volver a la ventana es cuando más probable es que el estado haya cambiado fuera.
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(id);
+      unsubscribe();
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   async function handleToggle() {

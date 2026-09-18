@@ -2505,3 +2505,29 @@ textarea:focus {
 .field-required {
   color: var(--danger-fg);
 }
+
+.stop-duration {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.stop-duration-fields {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.stop-duration-fields input {
+  width: 68px;
+  padding: 7px 9px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stop-duration-fields button {
+  margin-left: 6px;
+}

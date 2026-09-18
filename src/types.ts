@@ -183,6 +183,8 @@ export interface ElectronApi {
     key?: string;
     description?: string;
     stoppedAt?: number;
+    // Duración corregida por el usuario; si falta se usa la medida por el cronómetro.
+    elapsedMs?: number;
   }) => Promise<TimerState & { stoppedAt: number; timesheetId: number }>;
   discardTimer: (key?: string) => Promise<TimerState[]>;
   pauseTimer: (key?: string) => Promise<TimerState>;

@@ -545,7 +545,7 @@ ipcMain.handle('timer:resume', async (_event, key) => {
   return replaceTimer({ ...timer, segmentStartedAt: now });
 });
 
-ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt } = {}) => {
+ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt, elapsedMs: ajustado } = {}) => {
   if (stopInFlight) throw new Error('Ya se está registrando el tiempo, espera un momento');
 
   const timer = key ? findTimer(key) : activeTimer() || timers[0];
@@ -559,7 +559,12 @@ ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt } = {}
 
   const runningMs =
     timer.segmentStartedAt === null ? 0 : Math.max(0, validStop - timer.segmentStartedAt);
-  const elapsedMs = timer.accumulatedMs + runningMs;
+  const medidoMs = timer.accumulatedMs + runningMs;
+
+  // El usuario puede corregir la duración antes de registrar: el cronómetro no siempre
+  // refleja el trabajo real (se olvidó detener, se trabajó sin medir, etc.).
+  const elapsedMs =
+    Number.isFinite(ajustado) && ajustado > 0 ? Math.round(ajustado) : medidoMs;
 
   const finished = { ...timer, stoppedAt: validStop, elapsedMs, description };
   stopInFlight = true;
