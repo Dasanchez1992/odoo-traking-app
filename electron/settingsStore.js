@@ -5,6 +5,8 @@ const path = require('path');
 const DEFAULTS = {
   startAtLogin: false,
   remindersEnabled: true,
+  // Miniatura flotante mientras la app no está a la vista y hay tiempo corriendo.
+  floatingWidget: true,
 };
 
 function filePath() {

@@ -52,7 +52,7 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  async function toggle(key: 'startAtLogin' | 'remindersEnabled') {
+  async function toggle(key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget') {
     if (!settings) return;
     setSaving(true);
     setError(null);
@@ -131,6 +131,23 @@ export default function SettingsModal({ onClose }: Props) {
                   checked={settings.remindersEnabled}
                   disabled={saving}
                   onChange={() => toggle('remindersEnabled')}
+                />
+              </label>
+
+              <label className="setting-row">
+                <div className="setting-text">
+                  <strong>Cronómetro flotante</strong>
+                  <span>
+                    Al minimizar o cerrar la ventana con un cronómetro en marcha, aparece una
+                    miniatura sobre las demás ventanas para ver el tiempo, pausarlo o detenerlo.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  checked={settings.floatingWidget}
+                  disabled={saving}
+                  onChange={() => toggle('floatingWidget')}
                 />
               </label>
 

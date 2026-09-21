@@ -176,6 +176,7 @@ export interface TeamSummary {
 export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
+  floatingWidget: boolean;
   startAtLoginSupported: boolean;
 }
 

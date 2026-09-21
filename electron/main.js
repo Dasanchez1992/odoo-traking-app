@@ -33,6 +33,13 @@ const APP_ID = 'com.elipsys.elideysi';
 
 let mainWindow = null;
 let miniWindow = null;
+// La miniatura tarda en pintar la primera vez; sin esto se mostraría en blanco.
+let miniReady = false;
+// En memoria: la comprobación periódica no debe leer el disco cada dos segundos.
+let floatingWidget = true;
+// Último evento de la ventana principal: manda mientras no recupere el foco, porque no todos
+// los entornos reflejan la minimización al instante en isMinimized().
+let ocultaPorEvento = false;
 let tray = null;
 let client = null;
 let overduePollTimer = null;
@@ -76,6 +83,9 @@ function showWindow() {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+  // Si la ventana ya estaba a la vista no llega ningún evento: hay que limpiar la marca igual.
+  ocultaPorEvento = false;
+  syncMiniWindow();
 }
 
 function createWindow() {
@@ -104,11 +114,19 @@ function createWindow() {
   });
 
   // La miniatura solo aparece cuando la ventana principal no está a la vista.
-  mainWindow.on('minimize', showMiniWindow);
-  mainWindow.on('hide', showMiniWindow);
-  mainWindow.on('restore', hideMiniWindow);
-  mainWindow.on('show', hideMiniWindow);
-  mainWindow.on('focus', hideMiniWindow);
+  ['minimize', 'hide'].forEach((evento) => {
+    mainWindow.on(evento, () => {
+      ocultaPorEvento = true;
+      syncMiniWindow();
+    });
+  });
+
+  ['restore', 'show', 'focus'].forEach((evento) => {
+    mainWindow.on(evento, () => {
+      ocultaPorEvento = false;
+      syncMiniWindow();
+    });
+  });
 
   // Cerrar la ventana solo la oculta: la app sigue en la bandeja para poder recordar los fichajes.
   // Sin bandeja disponible se cierra de verdad, para no dejarla inaccesible.
@@ -158,15 +176,37 @@ function createMiniWindow() {
     miniWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { search: 'widget=1' });
   }
 
+  miniWindow.once('ready-to-show', () => {
+    miniReady = true;
+    syncMiniWindow();
+  });
+
   miniWindow.on('closed', () => {
     miniWindow = null;
+    miniReady = false;
   });
 }
 
+function mainWindowHidden() {
+  if (!mainWindow || mainWindow.isDestroyed()) return true;
+  if (mainWindow.isMinimized() || !mainWindow.isVisible()) return true;
+  return ocultaPorEvento && !mainWindow.isFocused();
+}
+
+// La miniatura se decide por el estado real, no por el evento que la disparó: da igual en qué
+// pestaña, diálogo o vista de enfoque estuviera el usuario al minimizar, e igual si el
+// cronómetro arrancó o se reanudó con la ventana ya oculta.
+function syncMiniWindow() {
+  const debeVerse = floatingWidget && timers.length > 0 && mainWindowHidden();
+  if (debeVerse) showMiniWindow();
+  else hideMiniWindow();
+}
+
 function showMiniWindow() {
-  if (timers.length === 0) return;
   if (!miniWindow || miniWindow.isDestroyed()) createMiniWindow();
-  miniWindow.showInactive();
+  if (miniWindow.isVisible()) return;
+  // Mostrarla antes de que pinte deja un recuadro vacío: si aún carga, se muestra al estar lista.
+  if (miniReady) miniWindow.showInactive();
 }
 
 function hideMiniWindow() {
@@ -514,7 +554,11 @@ ipcMain.handle('timer:start', async (_event, item, kind = 'task') => {
   if (active && active.key !== key) replaceTimer(pauseTimerAt(active, now));
 
   const existing = findTimer(key);
-  if (existing) return replaceTimer({ ...existing, segmentStartedAt: now });
+  if (existing) {
+    const reanudado = replaceTimer({ ...existing, segmentStartedAt: now });
+    syncMiniWindow();
+    return reanudado;
+  }
 
   const timer = {
     key,
@@ -545,13 +589,16 @@ ipcMain.handle('timer:start', async (_event, item, kind = 'task') => {
     accumulatedMs: 0,
   };
   timers = [...timers, timer];
+  syncMiniWindow();
   return timer;
 });
 
 ipcMain.handle('timer:pause', async (_event, key) => {
   const timer = key ? findTimer(key) : activeTimer();
   if (!timer) throw new Error('No hay ningún cronómetro corriendo');
-  return replaceTimer(pauseTimerAt(timer, Date.now()));
+  const pausado = replaceTimer(pauseTimerAt(timer, Date.now()));
+  syncMiniWindow();
+  return pausado;
 });
 
 ipcMain.handle('timer:resume', async (_event, key) => {
@@ -562,7 +609,9 @@ ipcMain.handle('timer:resume', async (_event, key) => {
   const active = activeTimer();
   if (active && active.key !== timer.key) replaceTimer(pauseTimerAt(active, now));
 
-  return replaceTimer({ ...timer, segmentStartedAt: now });
+  const reanudado = replaceTimer({ ...timer, segmentStartedAt: now });
+  syncMiniWindow();
+  return reanudado;
 });
 
 ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt, elapsedMs: ajustado } = {}) => {
@@ -599,7 +648,7 @@ ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt, elaps
 
     // El cronómetro se descarta solo cuando Odoo confirmó el registro.
     timers = timers.filter((t) => t.key !== finished.key);
-    if (timers.length === 0) hideMiniWindow();
+    syncMiniWindow();
     return { ...finished, timesheetId: record };
   } finally {
     stopInFlight = false;
@@ -609,7 +658,7 @@ ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt, elaps
 ipcMain.handle('timer:discard', async (_event, key) => {
   const timer = key ? findTimer(key) : activeTimer() || timers[0];
   if (timer) timers = timers.filter((t) => t.key !== timer.key);
-  if (timers.length === 0) hideMiniWindow();
+  syncMiniWindow();
   return timers;
 });
 
@@ -679,12 +728,14 @@ ipcMain.handle('settings:get', async () => ({
 
 ipcMain.handle('settings:update', async (_event, patch) => {
   const next = settingsStore.write(patch);
+  floatingWidget = next.floatingWidget;
   applyStartAtLogin(next.startAtLogin);
   if (next.remindersEnabled) {
     reminders.start();
   } else {
     reminders.stop();
   }
+  syncMiniWindow();
   return { ...next, startAtLoginSupported: process.platform !== 'linux' };
 });
 
@@ -703,11 +754,15 @@ if (!gotLock) {
       callback(false);
     });
 
+    floatingWidget = settingsStore.read().floatingWidget;
     applyStartAtLogin(settingsStore.read().startAtLogin);
     reminders.start();
 
     createWindow();
     createTray();
+    // Ningún evento de ventana es infalible: esta comprobación periódica garantiza que la
+    // miniatura esté visible siempre que haya cronómetro y la app no esté a la vista.
+    setInterval(syncMiniWindow, 2000);
     setupAutoUpdater({
       onNotify: notify,
       onStatus: (status) => broadcast('update:status', status),
