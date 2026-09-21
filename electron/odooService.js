@@ -144,6 +144,78 @@ async function fetchAssignedTickets(client) {
   return { available: false, tickets: [], reason: lastError ? lastError.message : '' };
 }
 
+// Etapas disponibles para una tarea: en Odoo dependen del proyecto al que pertenece.
+async function fetchTaskStages(client, projectId) {
+  const domain = projectId ? [['project_ids', 'in', [projectId]]] : [];
+  return client.execute_kw(
+    'project.task.type',
+    'search_read',
+    [domain, ['name', 'sequence', 'fold']],
+    { order: 'sequence asc' },
+  );
+}
+
+async function setTaskStage(client, taskId, stageId) {
+  if (!Number.isInteger(taskId) || !Number.isInteger(stageId)) {
+    throw new Error('Tarea o etapa inválida');
+  }
+  await client.execute_kw('project.task', 'write', [[taskId], { stage_id: stageId }]);
+  const [task] = await client.execute_kw('project.task', 'read', [[taskId], ['stage_id', 'state']]);
+  return task;
+}
+
+// Usuarios internos a los que se puede mencionar; los de portal quedan fuera.
+async function fetchMentionableUsers(client) {
+  try {
+    return await client.execute_kw(
+      'res.users',
+      'search_read',
+      [
+        [
+          ['active', '=', true],
+          ['share', '=', false],
+        ],
+        ['name', 'partner_id'],
+      ],
+      { order: 'name asc', limit: 300 },
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function fetchTaskMessages(client, taskId, limit = 12) {
+  const messages = await client.execute_kw(
+    'mail.message',
+    'search_read',
+    [
+      [
+        ['model', '=', 'project.task'],
+        ['res_id', '=', taskId],
+        ['message_type', 'in', ['comment', 'email']],
+      ],
+      ['body', 'date', 'author_id', 'subtype_id'],
+    ],
+    { order: 'date desc', limit },
+  );
+  return messages;
+}
+
+// El chatter de Odoo distingue nota interna (mt_note) de mensaje a seguidores (mt_comment).
+// Las menciones necesitan tanto el enlace en el cuerpo como los partner_ids para notificar.
+async function postTaskMessage(client, taskId, { body, partnerIds = [], isNote = true }) {
+  if (!Number.isInteger(taskId)) throw new Error('Tarea inválida');
+  const texto = (body || '').trim();
+  if (!texto) throw new Error('El mensaje está vacío');
+
+  return client.execute_kw('project.task', 'message_post', [[taskId]], {
+    body: texto,
+    partner_ids: partnerIds.filter((id) => Number.isInteger(id)),
+    message_type: 'comment',
+    subtype_xmlid: isNote ? 'mail.mt_note' : 'mail.mt_comment',
+  });
+}
+
 const ACTIVITY_FIELDS = [
   'id',
   'res_model',
@@ -676,6 +748,11 @@ module.exports = {
   fetchAssignedTickets,
   fetchActivities,
   completeActivity,
+  fetchTaskStages,
+  setTaskStage,
+  fetchTaskMessages,
+  postTaskMessage,
+  fetchMentionableUsers,
   fetchOverdueTasks,
   fetchProductivity,
   logTimesheet,

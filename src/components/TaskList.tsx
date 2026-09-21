@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { OdooTask, TimerState } from '../types';
 import { formatOdooDateShort, formatOdooDateTime, isPast } from '../lib/odooDate';
 import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
-import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
+import { IconAlert, IconChat, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
+import TaskDetailModal from './TaskDetailModal';
 
 interface Props {
   tasks: OdooTask[];
@@ -10,6 +11,7 @@ interface Props {
   onTimersChange: (timers: TimerState[]) => void;
   onTimerStarted: () => void;
   onRequestStop: () => void;
+  onTaskChanged: () => void;
   frozenAt: number | null;
   loading: boolean;
   filtered: boolean;
@@ -21,11 +23,13 @@ export default function TaskList({
   onTimersChange,
   onTimerStarted,
   onRequestStop,
+  onTaskChanged,
   frozenAt,
   loading,
   filtered,
 }: Props) {
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
+  const [detailTask, setDetailTask] = useState<OdooTask | null>(null);
   const [error, setError] = useState<string | null>(null);
   const running = timers.some((t) => t.segmentStartedAt !== null);
   const now = useNow(running && frozenAt === null);
@@ -138,6 +142,14 @@ export default function TaskList({
             </div>
 
             <div className="task-action">
+              <button
+                className="btn-ghost btn-icon"
+                onClick={() => setDetailTask(task)}
+                title="Cambiar etapa, dejar notas o etiquetar personas"
+                aria-label={`Detalle de "${task.name}"`}
+              >
+                <IconChat size={15} />
+              </button>
               {taskTimer && (
                 <span className={`task-elapsed ${isPaused ? 'is-paused' : ''}`}>
                   {formatElapsed(timerElapsedMs(taskTimer, displayNow))}
@@ -169,6 +181,14 @@ export default function TaskList({
           </div>
         );
       })}
+
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+          onChanged={onTaskChanged}
+        />
+      )}
     </div>
   );
 }

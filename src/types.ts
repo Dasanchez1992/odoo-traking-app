@@ -45,6 +45,27 @@ export interface TicketsResult {
   reason?: string;
 }
 
+export interface TaskStage {
+  id: number;
+  name: string;
+  sequence: number;
+  fold: boolean;
+}
+
+export interface OdooMessage {
+  id: number;
+  body: string;
+  date: string;
+  author_id: [number, string] | false;
+  subtype_id: [number, string] | false;
+}
+
+export interface MentionableUser {
+  id: number;
+  name: string;
+  partner_id: [number, string] | false;
+}
+
 export interface OdooActivity {
   id: number;
   res_model: string;
@@ -167,6 +188,15 @@ export interface ElectronApi {
   listOverdueTasks: () => Promise<OdooTask[]>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
+
+  getTaskStages: (projectId: number | null) => Promise<TaskStage[]>;
+  setTaskStage: (taskId: number, stageId: number) => Promise<{ stage_id: [number, string] | false }>;
+  getTaskMessages: (taskId: number) => Promise<OdooMessage[]>;
+  postTaskMessage: (
+    taskId: number,
+    payload: { body: string; partnerIds?: number[]; isNote?: boolean },
+  ) => Promise<unknown>;
+  getMentionableUsers: () => Promise<MentionableUser[]>;
 
   listActivities: () => Promise<ActivitiesResult>;
   completeActivity: (activityId: number) => Promise<unknown>;

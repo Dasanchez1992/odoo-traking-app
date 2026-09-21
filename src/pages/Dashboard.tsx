@@ -73,6 +73,15 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     setFocusMode(true);
   }
 
+  // Tras cambiar la etapa o comentar se recarga en silencio: sin esqueleto de carga.
+  async function refreshTasks() {
+    try {
+      setTasks(await window.api.listTasks());
+    } catch {
+      // Un fallo puntual no debe tapar la lista que ya se ve.
+    }
+  }
+
   function clearTimer() {
     setStopRequestedAt(null);
     setFocusMode(false);
@@ -403,6 +412,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 onTimersChange={setTimers}
                 onTimerStarted={handleTimerStarted}
                 onRequestStop={() => setStopRequestedAt(Date.now())}
+                onTaskChanged={refreshTasks}
                 frozenAt={stopRequestedAt}
                 loading={loading}
                 filtered={isFiltered || search.trim() !== '' || projectFilter !== 'all' || stageFilter !== 'all' || dateFilter !== 'all'}

@@ -428,6 +428,26 @@ ipcMain.handle('team:summary', async () => {
   return odooService.fetchTeamProductivity(requireClient());
 });
 
+ipcMain.handle('tasks:stages', async (_event, projectId) => {
+  return odooService.fetchTaskStages(requireClient(), projectId ?? null);
+});
+
+ipcMain.handle('tasks:set-stage', async (_event, taskId, stageId) => {
+  return odooService.setTaskStage(requireClient(), taskId, stageId);
+});
+
+ipcMain.handle('tasks:messages', async (_event, taskId) => {
+  return odooService.fetchTaskMessages(requireClient(), taskId);
+});
+
+ipcMain.handle('tasks:post-message', async (_event, taskId, payload) => {
+  return odooService.postTaskMessage(requireClient(), taskId, payload || {});
+});
+
+ipcMain.handle('users:mentionable', async () => {
+  return odooService.fetchMentionableUsers(requireClient());
+});
+
 ipcMain.handle('activities:list', async () => {
   return odooService.fetchActivities(requireClient());
 });

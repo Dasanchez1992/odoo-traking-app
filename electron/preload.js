@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld('api', {
   openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
   getProductivity: () => ipcRenderer.invoke('stats:productivity'),
 
+  getTaskStages: (projectId) => ipcRenderer.invoke('tasks:stages', projectId),
+  setTaskStage: (taskId, stageId) => ipcRenderer.invoke('tasks:set-stage', taskId, stageId),
+  getTaskMessages: (taskId) => ipcRenderer.invoke('tasks:messages', taskId),
+  postTaskMessage: (taskId, payload) => ipcRenderer.invoke('tasks:post-message', taskId, payload),
+  getMentionableUsers: () => ipcRenderer.invoke('users:mentionable'),
+
   listActivities: () => ipcRenderer.invoke('activities:list'),
   completeActivity: (activityId) => ipcRenderer.invoke('activities:complete', activityId),
   openRecordInOdoo: (model, recordId) => ipcRenderer.invoke('record:open', model, recordId),

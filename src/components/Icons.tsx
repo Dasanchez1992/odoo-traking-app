@@ -224,3 +224,12 @@ export function LogoMark({ size = 32, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconChat({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M20 14.5a2.5 2.5 0 0 1-2.5 2.5H9l-4 3.5V6.5A2.5 2.5 0 0 1 7.5 4h10A2.5 2.5 0 0 1 20 6.5z" />
+      <path d="M8.5 9h7M8.5 12.5h4.5" />
+    </svg>
+  );
+}
