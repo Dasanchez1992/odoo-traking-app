@@ -195,7 +195,11 @@ export interface ElectronApi {
   getTaskMessages: (taskId: number) => Promise<OdooMessage[]>;
   postTaskMessage: (
     taskId: number,
-    payload: { body: string; partnerIds?: number[]; isNote?: boolean },
+    payload: {
+      body: string;
+      mentions?: { partnerId: number; name: string }[];
+      isNote?: boolean;
+    },
   ) => Promise<unknown>;
   getMentionableUsers: () => Promise<MentionableUser[]>;
 

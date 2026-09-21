@@ -201,18 +201,42 @@ async function fetchTaskMessages(client, taskId, limit = 12) {
   return messages;
 }
 
+function escapeHtml(texto) {
+  return String(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Mismo marcado que genera el editor de Odoo al escribir «@»: sin la clase o_mail_redirect
+// el enlace no se comporta como mención al hacer clic.
+function mentionLink(baseUrl, partnerId, name) {
+  return (
+    `<a href="${baseUrl}/odoo/res.partner/${partnerId}" class="o_mail_redirect" ` +
+    `data-oe-id="${partnerId}" data-oe-model="res.partner" target="_blank">@${escapeHtml(name)}</a>`
+  );
+}
+
 // El chatter de Odoo distingue nota interna (mt_note) de mensaje a seguidores (mt_comment).
-// Las menciones necesitan tanto el enlace en el cuerpo como los partner_ids para notificar.
-async function postTaskMessage(client, taskId, { body, partnerIds = [], isNote = true }) {
+// Las menciones necesitan el enlace en el cuerpo para verse y los partner_ids para notificar.
+async function postTaskMessage(client, taskId, { body, mentions = [], isNote = true }) {
   if (!Number.isInteger(taskId)) throw new Error('Tarea inválida');
   const texto = (body || '').trim();
   if (!texto) throw new Error('El mensaje está vacío');
 
+  const baseUrl = client.url.replace(/\/+$/, '');
+  const validas = (mentions || []).filter((m) => m && Number.isInteger(m.partnerId));
+  const enlaces = validas.map((m) => mentionLink(baseUrl, m.partnerId, m.name)).join(' ');
+  const cuerpo = escapeHtml(texto).replace(/\n/g, '<br/>');
+
   return client.execute_kw('project.task', 'message_post', [[taskId]], {
-    body: texto,
-    partner_ids: partnerIds.filter((id) => Number.isInteger(id)),
+    body: enlaces ? `${enlaces} ${cuerpo}` : cuerpo,
+    partner_ids: validas.map((m) => m.partnerId),
     message_type: 'comment',
     subtype_xmlid: isNote ? 'mail.mt_note' : 'mail.mt_comment',
+    // Sin esto Odoo escapa el cuerpo y el enlace de la mención se ve como texto plano.
+    body_is_html: true,
   });
 }
 

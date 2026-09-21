@@ -22,14 +22,6 @@ function plainText(html: string) {
     .trim();
 }
 
-function escapeHtml(texto: string) {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>');
-}
-
 export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
   const [stages, setStages] = useState<TaskStage[]>([]);
   const [stageId, setStageId] = useState<number | null>(task.stage_id ? task.stage_id[0] : null);
@@ -109,22 +101,12 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
     setSaving(true);
     setError(null);
     try {
-      // Odoo reconoce la mención por el enlace al partner; partner_ids es lo que la notifica.
-      const enlaces = mentions
-        .filter((u) => u.partner_id)
-        .map(
-          (u) =>
-            `<a href="#" data-oe-model="res.partner" data-oe-id="${
-              (u.partner_id as [number, string])[0]
-            }">@${u.name}</a>`,
-        )
-        .join(' ');
-
       await window.api.postTaskMessage(task.id, {
-        body: enlaces ? `${enlaces} ${escapeHtml(texto)}` : escapeHtml(texto),
-        partnerIds: mentions
+        body: texto,
+        // El enlace de la mención lo arma el proceso principal: necesita la URL de Odoo.
+        mentions: mentions
           .filter((u) => u.partner_id)
-          .map((u) => (u.partner_id as [number, string])[0]),
+          .map((u) => ({ partnerId: (u.partner_id as [number, string])[0], name: u.name })),
         isNote,
       });
 
