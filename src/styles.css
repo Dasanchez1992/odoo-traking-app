@@ -515,7 +515,10 @@ input:focus {
 }
 
 .app-content {
-  max-width: 1080px;
+  /* Al maximizar, el contenido ocupa la pantalla en vez de dejar franjas vacías. El tope solo
+     entra en pantallas muy anchas, donde estirar más separa demasiado las columnas. */
+  width: 100%;
+  max-width: 2100px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -3250,5 +3253,47 @@ textarea:focus {
 
   .task-detail-body {
     max-height: 76vh;
+  }
+}
+
+/* ============================================================
+   Pantallas anchas
+   Al maximizar hay espacio de sobra: se reparte en márgenes más generosos
+   y en las vistas que de verdad lo aprovechan, como el reparto del equipo.
+   ============================================================ */
+@media (min-width: 1500px) {
+  .app-main {
+    padding: 24px 32px 32px;
+  }
+
+  .gantt-head,
+  .gantt-row {
+    grid-template-columns: 260px minmax(620px, 1fr);
+  }
+
+  .task-table-head,
+  .task-row {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 0.5fr) 160px 190px;
+  }
+
+  .ticket-table-head,
+  .ticket-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 180px 160px 190px;
+  }
+
+  .activity-table-head,
+  .activity-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) 180px 140px;
+  }
+
+  .team-table-head,
+  .team-row {
+    grid-template-columns: minmax(0, 1.6fr) 120px 140px 160px 140px 140px;
+  }
+}
+
+@media (min-width: 1900px) {
+  .app-main {
+    padding: 26px 48px 36px;
   }
 }
