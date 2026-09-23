@@ -468,6 +468,11 @@ ipcMain.handle('team:summary', async () => {
   return odooService.fetchTeamProductivity(requireClient());
 });
 
+// Mismo permiso que el resumen de equipo: Odoo rechaza la lectura de hr.employee sin él.
+ipcMain.handle('team:schedule', async () => {
+  return odooService.fetchTeamSchedule(requireClient());
+});
+
 ipcMain.handle('tasks:stages', async (_event, projectId) => {
   return odooService.fetchTaskStages(requireClient(), projectId ?? null);
 });

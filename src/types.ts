@@ -173,6 +173,34 @@ export interface TeamSummary {
   employees: TeamMember[];
 }
 
+export interface ScheduleTask {
+  id: number;
+  name: string;
+  projectName: string | null;
+  stageName: string | null;
+  state: string | null;
+  priority: string;
+  plannedStart: string | null;
+  deadline: string | null;
+  allocatedHours: number;
+  effectiveHours: number;
+  userIds: number[];
+}
+
+export interface ScheduleMember {
+  id: number;
+  name: string;
+  userId: number;
+  department: string | null;
+  currentTask: { id: number; name: string; hours: number } | null;
+}
+
+export interface TeamSchedule {
+  today: string;
+  employees: ScheduleMember[];
+  tasks: ScheduleTask[];
+}
+
 export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
@@ -208,6 +236,7 @@ export interface ElectronApi {
   openRecordInOdoo: (model: string, recordId: number) => Promise<string>;
   canManageTeam: () => Promise<boolean>;
   getTeamSummary: () => Promise<TeamSummary>;
+  getTeamSchedule: () => Promise<TeamSchedule>;
 
   getTimerState: () => Promise<TimerState[]>;
   startTimer: (item: OdooTask | OdooTicket, kind?: TimerKind) => Promise<TimerState>;

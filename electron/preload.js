@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('api', {
   openRecordInOdoo: (model, recordId) => ipcRenderer.invoke('record:open', model, recordId),
   canManageTeam: () => ipcRenderer.invoke('team:available'),
   getTeamSummary: () => ipcRenderer.invoke('team:summary'),
+  getTeamSchedule: () => ipcRenderer.invoke('team:schedule'),
 
   listTickets: () => ipcRenderer.invoke('tickets:list'),
   openTicketInOdoo: (ticketId) => ipcRenderer.invoke('tickets:open', ticketId),

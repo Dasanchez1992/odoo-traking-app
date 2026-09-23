@@ -2737,3 +2737,315 @@ textarea:focus {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ============================================================
+   Reparto del equipo (Gantt)
+   ============================================================ */
+.panel-subtitle {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gantt-toolbar {
+  justify-content: space-between;
+}
+
+.gantt-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gantt-totals {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.gantt-totals strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.gantt-totals .is-danger strong {
+  color: var(--danger-fg);
+}
+
+.gantt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 18px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.gantt-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gantt-chip {
+  width: 18px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--brand-500);
+}
+
+.gantt-chip.is-projected {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--brand-300) 0 3px,
+    transparent 3px 6px
+  );
+  border: 1px solid var(--brand-300);
+}
+
+.gantt-chip.is-current {
+  background: var(--brand-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-500) 35%, transparent);
+}
+
+.gantt-chip.is-late {
+  background: var(--danger-solid);
+}
+
+.gantt {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.gantt-head,
+.gantt-row {
+  display: grid;
+  grid-template-columns: 210px minmax(520px, 1fr);
+  align-items: stretch;
+  min-width: 720px;
+}
+
+.gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.gantt-head-person {
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  border-right: 1px solid var(--border);
+}
+
+.gantt-axis {
+  display: flex;
+}
+
+.gantt-day {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 0;
+  border-left: 1px solid var(--border);
+}
+
+.gantt-day-week {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.gantt-day-num {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.gantt-day.is-weekend {
+  background: var(--surface-sunken);
+}
+
+.gantt-day.is-today .gantt-day-num,
+.gantt-day.is-today .gantt-day-week {
+  color: var(--brand-500);
+}
+
+.gantt-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.gantt-row:last-child {
+  border-bottom: none;
+}
+
+.gantt-person {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 14px;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+
+.gantt-person strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-now,
+.gantt-idle {
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-now {
+  color: var(--brand-500);
+}
+
+.gantt-idle {
+  color: var(--text-subtle);
+}
+
+.gantt-track {
+  position: relative;
+  display: flex;
+  min-height: 40px;
+}
+
+.gantt-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+}
+
+.gantt-cell.is-weekend {
+  background: var(--surface-sunken);
+}
+
+.gantt-cell.is-today,
+.gantt-day.is-today {
+  border-left: 2px solid var(--brand-500);
+  background: color-mix(in srgb, var(--brand-500) 7%, transparent);
+}
+
+.gantt-bar {
+  position: absolute;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-inverse);
+  background: var(--brand-500);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: filter 0.14s var(--ease);
+}
+
+.gantt-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-bar:hover {
+  filter: brightness(1.08);
+}
+
+.gantt-bar.is-projected {
+  /* El texto va sobre el rayado, no sobre color sólido: tiene que leerse en ambos temas. */
+  color: var(--text);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-300) 55%, transparent) 0 4px,
+    transparent 4px 8px
+  );
+  border: 1px dashed var(--brand-300);
+}
+
+.gantt-bar.is-current {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-500) 45%, transparent);
+}
+
+.gantt-bar.is-late {
+  background: var(--danger-solid);
+  color: var(--text-inverse);
+  border-color: var(--danger-solid);
+}
+
+.gantt-bar.is-late.is-projected {
+  color: var(--danger-fg);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger-solid) 45%, transparent) 0 4px,
+    transparent 4px 8px
+  );
+  border: 1px dashed var(--danger-solid);
+}
+
+.gantt-bar.is-risk:not(.is-late) {
+  border-bottom: 2px solid var(--warning-fg);
+}
+
+.gantt-empty-row {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+.gantt-beyond {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.gantt-note {
+  padding: 12px 18px 16px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-subtle);
+  border-top: 1px solid var(--border);
+}

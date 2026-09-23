@@ -10,6 +10,7 @@ import StopTimerDialog from '../components/StopTimerDialog';
 import TicketList from '../components/TicketList';
 import FocusTimer from '../components/FocusTimer';
 import TeamPanel from '../components/TeamPanel';
+import TeamGantt from '../components/TeamGantt';
 import ActivityList from '../components/ActivityList';
 import NotificationsMenu from '../components/NotificationsMenu';
 import { initialsOf } from '../lib/format';
@@ -56,7 +57,9 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   // Marca el instante en que se pidió detener: el cronómetro se congela ahí.
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
-  const [tab, setTab] = useState<'tasks' | 'tickets' | 'activities' | 'productivity' | 'team'>('tasks');
+  const [tab, setTab] = useState<
+    'tasks' | 'tickets' | 'activities' | 'productivity' | 'team' | 'gantt'
+  >('tasks');
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
   const [canManageTeam, setCanManageTeam] = useState(false);
 
@@ -328,6 +331,16 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 Equipo
               </button>
             )}
+            {canManageTeam && (
+              <button
+                className={`tab ${tab === 'gantt' ? 'is-active' : ''}`}
+                onClick={() => setTab('gantt')}
+                role="tab"
+                aria-selected={tab === 'gantt'}
+              >
+                Reparto
+              </button>
+            )}
           </div>
 
           {tab === 'tickets' && (
@@ -369,6 +382,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           {tab === 'productivity' && <ProductivityPanel key={refreshSignal} />}
 
           {tab === 'team' && canManageTeam && <TeamPanel key={refreshSignal} />}
+
+          {tab === 'gantt' && canManageTeam && <TeamGantt key={refreshSignal} />}
 
           {tab === 'tasks' && (
             <section className="card">

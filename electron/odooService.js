@@ -765,9 +765,143 @@ async function fetchTeamProductivity(client) {
   };
 }
 
+const TEAM_TASK_FIELDS = [
+  'id',
+  'name',
+  'project_id',
+  'date_deadline',
+  'priority',
+  'stage_id',
+  'state',
+  'allocated_hours',
+  'effective_hours',
+];
+
+// El campo de asignación cambió de nombre (user_id -> user_ids) y planned_date_begin solo
+// existe con la planificación de Enterprise: se prueban las combinaciones de mayor a menor.
+async function searchTeamTasks(client, userIds) {
+  const combinaciones = [
+    { campo: 'user_ids', fields: [...TEAM_TASK_FIELDS, 'planned_date_begin', 'user_ids'] },
+    { campo: 'user_ids', fields: [...TEAM_TASK_FIELDS, 'user_ids'] },
+    { campo: 'user_id', fields: [...TEAM_TASK_FIELDS, 'planned_date_begin', 'user_id'] },
+    { campo: 'user_id', fields: [...TEAM_TASK_FIELDS, 'user_id'] },
+  ];
+
+  let lastError;
+  for (const { campo, fields } of combinaciones) {
+    for (const extra of [[['state', 'not in', CLOSED_TASK_STATES]], [['stage_id.fold', '=', false]], []]) {
+      try {
+        return await client.execute_kw(
+          'project.task',
+          'search_read',
+          [[[campo, 'in', userIds], ['active', '=', true], ...extra], fields],
+          { order: 'date_deadline asc, priority desc, id asc', limit: 600 },
+        );
+      } catch (err) {
+        lastError = err;
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Última tarea imputada hoy: es la mejor señal de en qué está trabajando cada persona,
+// porque el cronómetro de la app vive en el equipo de cada quien.
+async function currentTaskByEmployee(client, employeeIds, today) {
+  try {
+    const lines = await client.execute_kw(
+      'account.analytic.line',
+      'search_read',
+      [
+        [
+          ['employee_id', 'in', employeeIds],
+          ['date', '=', today],
+          ['task_id', '!=', false],
+        ],
+        ['employee_id', 'task_id', 'unit_amount', 'write_date'],
+      ],
+      { order: 'write_date desc', limit: 500 },
+    );
+
+    const ultimo = {};
+    lines.forEach((line) => {
+      const id = Array.isArray(line.employee_id) ? line.employee_id[0] : line.employee_id;
+      if (!id || ultimo[id]) return;
+      ultimo[id] = {
+        id: line.task_id[0],
+        name: line.task_id[1],
+        hours: Math.round((line.unit_amount || 0) * 100) / 100,
+      };
+    });
+    return ultimo;
+  } catch {
+    return {};
+  }
+}
+
+// Reparto del equipo: en qué anda cada persona y qué tiene por delante.
+async function fetchTeamSchedule(client) {
+  const { ecuadorDateKey } = require('./dateUtil');
+  const today = ecuadorDateKey(new Date());
+
+  const employees = await client.execute_kw(
+    'hr.employee',
+    'search_read',
+    [
+      // Mismo criterio que la pestaña de equipo: el propio usuario queda fuera.
+      [
+        ['active', '=', true],
+        ['user_id', '!=', client.uid],
+      ],
+      ['name', 'user_id', 'department_id'],
+    ],
+    { limit: 400, order: 'name asc' },
+  );
+
+  const conUsuario = employees.filter((e) => Array.isArray(e.user_id));
+  if (conUsuario.length === 0) return { today, employees: [], tasks: [] };
+
+  const userIds = conUsuario.map((e) => e.user_id[0]);
+  const [tareas, actuales] = await Promise.all([
+    searchTeamTasks(client, userIds),
+    currentTaskByEmployee(client, conUsuario.map((e) => e.id), today),
+  ]);
+
+  const asignados = (task) => {
+    if (Array.isArray(task.user_ids)) return task.user_ids;
+    if (Array.isArray(task.user_id)) return [task.user_id[0]];
+    return [];
+  };
+
+  return {
+    today,
+    employees: conUsuario.map((employee) => ({
+      id: employee.id,
+      name: employee.name,
+      userId: employee.user_id[0],
+      department: Array.isArray(employee.department_id) ? employee.department_id[1] : null,
+      currentTask: actuales[employee.id] || null,
+    })),
+    tasks: tareas.map((task) => ({
+      id: task.id,
+      name: task.name,
+      projectName: Array.isArray(task.project_id) ? task.project_id[1] : null,
+      stageName: Array.isArray(task.stage_id) ? task.stage_id[1] : null,
+      state: task.state || null,
+      priority: task.priority || '0',
+      plannedStart: task.planned_date_begin || null,
+      deadline: task.date_deadline || null,
+      allocatedHours: typeof task.allocated_hours === 'number' ? task.allocated_hours : 0,
+      effectiveHours: typeof task.effective_hours === 'number' ? task.effective_hours : 0,
+      userIds: asignados(task),
+    })),
+  };
+}
+
 module.exports = {
   canManageTeam,
   fetchTeamProductivity,
+  fetchTeamSchedule,
   fetchAssignedTasks,
   fetchAssignedTickets,
   fetchActivities,
