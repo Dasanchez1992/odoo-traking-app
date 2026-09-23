@@ -3049,3 +3049,206 @@ textarea:focus {
   color: var(--text-subtle);
   border-top: 1px solid var(--border);
 }
+
+/* ============================================================
+   Ventanas estrechas
+   La app se usa a menudo junto a Odoo o con el escalado de Windows al 125-150 %,
+   así que el ancho útil baja bastante de los 1080 px del diseño base.
+   ============================================================ */
+@media (max-width: 1024px) {
+  .app-main {
+    padding: 18px 16px 24px;
+  }
+
+  .task-table-head,
+  .task-row {
+    grid-template-columns: minmax(0, 1fr) 150px 128px 158px;
+    gap: 12px;
+    padding: 0 14px;
+  }
+
+  .ticket-table-head,
+  .ticket-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 120px 110px 158px;
+    gap: 12px;
+    padding: 0 14px;
+  }
+
+  .activity-table-head,
+  .activity-row {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 130px 112px;
+    gap: 12px;
+    padding: 0 14px;
+  }
+
+  .team-table-head,
+  .team-row {
+    grid-template-columns: minmax(0, 1.4fr) 80px 96px 116px 96px 96px;
+    gap: 10px;
+    padding: 0 14px;
+  }
+}
+
+@media (max-width: 880px) {
+  /* Dos columnas antes que una: apilarlo todo deja la pantalla sin sitio para la lista. */
+  .overview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .overview-grid > *:first-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Las pestañas no se parten: se desplazan. */
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    white-space: nowrap;
+  }
+
+  .app-brand-text span,
+  .app-user-info span {
+    display: none;
+  }
+
+  .app-user-info {
+    max-width: 140px;
+  }
+
+  .gantt-head,
+  .gantt-row {
+    grid-template-columns: 160px minmax(420px, 1fr);
+    min-width: 580px;
+  }
+
+  .gantt-totals {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-main {
+    padding: 14px 12px 20px;
+  }
+
+  /* Cae la columna menos crítica de cada lista; el nombre y la acción se quedan. */
+  .task-table-head > *:nth-child(2),
+  .task-row > *:nth-child(2) {
+    display: none;
+  }
+
+  .task-table-head,
+  .task-row {
+    grid-template-columns: minmax(0, 1fr) 120px 150px;
+  }
+
+  .ticket-table-head > *:nth-child(2),
+  .ticket-row > *:nth-child(2),
+  .ticket-table-head > *:nth-child(3),
+  .ticket-row > *:nth-child(3) {
+    display: none;
+  }
+
+  .ticket-table-head,
+  .ticket-row {
+    grid-template-columns: minmax(0, 1fr) 110px 150px;
+  }
+
+  .activity-table-head > *:nth-child(2),
+  .activity-row > *:nth-child(2) {
+    display: none;
+  }
+
+  .activity-table-head,
+  .activity-row {
+    grid-template-columns: minmax(0, 1fr) 128px 112px;
+  }
+
+  .team-table-head > *:nth-child(5),
+  .team-row > *:nth-child(5) {
+    display: none;
+  }
+
+  .team-table-head,
+  .team-row {
+    grid-template-columns: minmax(0, 1.4fr) 76px 92px 110px 92px;
+  }
+
+  .panel-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .gantt-head,
+  .gantt-row {
+    grid-template-columns: 132px minmax(380px, 1fr);
+    min-width: 512px;
+  }
+
+  .gantt-person {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-table-head,
+  .task-row {
+    grid-template-columns: minmax(0, 1fr) 96px 132px;
+    gap: 8px;
+  }
+
+  .ticket-table-head,
+  .ticket-row {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
+  .ticket-table-head > *:nth-child(4),
+  .ticket-row > *:nth-child(4) {
+    display: none;
+  }
+
+  .activity-table-head,
+  .activity-row {
+    grid-template-columns: minmax(0, 1fr) 104px 104px;
+    gap: 8px;
+  }
+
+  .team-table-head > *:nth-child(6),
+  .team-row > *:nth-child(6) {
+    display: none;
+  }
+
+  .team-table-head,
+  .team-row {
+    grid-template-columns: minmax(0, 1.4fr) 72px 88px 104px;
+  }
+
+  .app-user-info {
+    display: none;
+  }
+
+  /* Los diálogos pasan a ocupar casi todo el ancho disponible. */
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-wide {
+    max-width: 100%;
+  }
+
+  .task-detail-body {
+    max-height: 76vh;
+  }
+}

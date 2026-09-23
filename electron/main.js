@@ -92,8 +92,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1180,
     height: 760,
-    minWidth: 900,
-    minHeight: 580,
+    // El diseño aguanta ventanas estrechas: así se puede trabajar al lado de Odoo.
+    minWidth: 680,
+    minHeight: 520,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
