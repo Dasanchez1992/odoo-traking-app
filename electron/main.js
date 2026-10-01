@@ -18,6 +18,7 @@ const sessionStore = require('./sessionStore');
 const settingsStore = require('./settingsStore');
 const { formatOdooDateTime } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
+const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -351,6 +352,32 @@ const reminders = createReminderScheduler({
       return 'unknown';
     }
   },
+});
+
+const autoAttendance = createAutoAttendanceScheduler({
+  // Sin sesión con Odoo no hay nada que fichar.
+  isEnabled: () => !!client && settingsStore.read().autoAttendance,
+  getTimes: () => {
+    const settings = settingsStore.read();
+    return { checkIn: settings.autoCheckIn, checkOut: settings.autoCheckOut };
+  },
+  getState: async () => {
+    if (!client) return 'unknown';
+    try {
+      const employeeId = await odooService.getEmployeeId(client);
+      const open = await odooService.getOpenAttendance(client, employeeId);
+      return open ? 'in' : 'out';
+    } catch {
+      return 'unknown';
+    }
+  },
+  toggle: async () => {
+    const employeeId = await odooService.getEmployeeId(requireClient());
+    return odooService.toggleAttendance(requireClient(), employeeId);
+  },
+  notify,
+  // La tarjeta de jornada se entera en el acto, sin esperar al refresco de fondo.
+  onChange: () => broadcast('data:refresh'),
 });
 
 function stopOverduePolling() {
@@ -741,6 +768,11 @@ ipcMain.handle('settings:update', async (_event, patch) => {
   } else {
     reminders.stop();
   }
+  if (next.autoAttendance) {
+    autoAttendance.start();
+  } else {
+    autoAttendance.stop();
+  }
   syncMiniWindow();
   return { ...next, startAtLoginSupported: process.platform !== 'linux' };
 });
@@ -763,6 +795,7 @@ if (!gotLock) {
     floatingWidget = settingsStore.read().floatingWidget;
     applyStartAtLogin(settingsStore.read().startAtLogin);
     reminders.start();
+    if (settingsStore.read().autoAttendance) autoAttendance.start();
 
     createWindow();
     createTray();
@@ -786,6 +819,7 @@ app.on('before-quit', () => {
   stopOverduePolling();
   stopBackgroundRefresh();
   reminders.stop();
+  autoAttendance.stop();
 });
 
 app.on('window-all-closed', () => {

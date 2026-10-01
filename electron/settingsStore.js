@@ -7,6 +7,10 @@ const DEFAULTS = {
   remindersEnabled: true,
   // Miniatura flotante mientras la app no está a la vista y hay tiempo corriendo.
   floatingWidget: true,
+  // Fichaje automático de entrada y salida, de lunes a viernes, con la app abierta.
+  autoAttendance: false,
+  autoCheckIn: '08:30',
+  autoCheckOut: '17:30',
 };
 
 function filePath() {

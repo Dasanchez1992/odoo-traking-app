@@ -52,7 +52,7 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  async function toggle(key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget') {
+  async function toggle(key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget' | 'autoAttendance') {
     if (!settings) return;
     setSaving(true);
     setError(null);
@@ -62,6 +62,19 @@ export default function SettingsModal({ onClose }: Props) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la configuración');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveTime(key: 'autoCheckIn' | 'autoCheckOut', value: string) {
+    if (!settings) return;
+    // El input ya restringe el formato; aquí solo se evita guardar un borrado a medias.
+    setSettings({ ...settings, [key]: value });
+    if (!/^\d{2}:\d{2}$/.test(value)) return;
+    setError(null);
+    try {
+      setSettings(await window.api.updateSettings({ [key]: value }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la hora');
     }
   }
 
@@ -133,6 +146,50 @@ export default function SettingsModal({ onClose }: Props) {
                   onChange={() => toggle('remindersEnabled')}
                 />
               </label>
+
+              <label className="setting-row">
+                <div className="setting-text">
+                  <strong>Marcación automática de jornada</strong>
+                  <span>
+                    Registra tu entrada y tu salida en Odoo a las horas que fijes, de lunes a
+                    viernes. Necesita la app abierta a esa hora y no duplica nada: si ya marcaste
+                    a mano, lo deja como está.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  checked={settings.autoAttendance}
+                  disabled={saving}
+                  onChange={() => toggle('autoAttendance')}
+                />
+              </label>
+
+              {settings.autoAttendance && (
+                <div className="setting-row setting-times">
+                  <label className="field">
+                    <span className="field-label">Hora de entrada</span>
+                    <input
+                      type="time"
+                      value={settings.autoCheckIn}
+                      onChange={(e) => saveTime('autoCheckIn', e.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Hora de salida</span>
+                    <input
+                      type="time"
+                      value={settings.autoCheckOut}
+                      onChange={(e) => saveTime('autoCheckOut', e.target.value)}
+                    />
+                  </label>
+                  <span className="field-hint setting-times-hint">
+                    Hora de Ecuador. Si la app estaba cerrada, la entrada aún se registra hasta
+                    3 horas después y la salida hasta 1 hora después, con la hora real en que se
+                    marcó.
+                  </span>
+                </div>
+              )}
 
               <label className="setting-row">
                 <div className="setting-text">

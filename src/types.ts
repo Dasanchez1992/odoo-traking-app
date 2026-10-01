@@ -205,6 +205,10 @@ export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
   floatingWidget: boolean;
+  autoAttendance: boolean;
+  /** Hora 'HH:MM' en zona de Ecuador. */
+  autoCheckIn: string;
+  autoCheckOut: string;
   startAtLoginSupported: boolean;
 }
 

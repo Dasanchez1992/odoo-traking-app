@@ -3297,3 +3297,26 @@ textarea:focus {
     padding: 26px 48px 36px;
   }
 }
+
+/* Horas del fichaje automático: dos campos cortos bajo su interruptor. */
+.setting-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  cursor: default;
+}
+
+.setting-times .field {
+  gap: 4px;
+}
+
+.setting-times input[type='time'] {
+  width: 130px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.setting-times-hint {
+  flex-basis: 100%;
+}
