@@ -8,14 +8,14 @@ const SCHEDULE = [
     hour: 9,
     minute: 30,
     title: 'Recordatorio de entrada',
-    body: 'Son las 09:30. Marca tu entrada en Elideysi.',
+    body: 'Son las 09:30. Marca tu entrada en Elipsys Time.',
   },
   {
     id: 'check_out',
     hour: 17,
     minute: 30,
     title: 'Recordatorio de salida',
-    body: 'Son las 17:30. Marca tu salida en Elideysi.',
+    body: 'Son las 17:30. Marca tu salida en Elipsys Time.',
   },
 ];
 

@@ -1,4 +1,4 @@
-# Elideysi — Gestión de tiempo y tareas
+# Elipsys Time — Gestión de tiempo y tareas
 
 App de escritorio (Electron + React + TypeScript) que se conecta a una instancia de Odoo por JSON-RPC para:
 
@@ -10,7 +10,9 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Ver métricas de productividad: horas registradas hoy y esta semana, promedio diario, porcentaje de
   imputación (horas en hojas de horas sobre horas de jornada), horas por día de las últimas dos
   semanas y dedicación por proyecto.
-- Recordar los fichajes a las 09:30 y 17:30 (hora de Ecuador), de lunes a viernes.
+- Recordar los fichajes a las 09:30 y 17:30 (hora de Ecuador), de lunes a viernes, o marcarlos
+  automáticamente a la hora configurada si se activa la opción.
+- Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
 - Arrancar junto con el sistema operativo y quedarse en la bandeja del sistema.
 
 ## Comportamiento de la aplicación
@@ -28,6 +30,15 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
   hacer ruido, y se muestran con el botón «Ver atrasadas +1 mes».
 - **Inicio automático:** disponible en Windows y macOS (`app.setLoginItemSettings`). En Linux la
   opción aparece deshabilitada.
+
+### El nombre anterior
+
+La aplicación se llamaba **Elideysi** hasta la versión 1.7.0. El `appId`
+(`com.elipsys.elideysi`) se mantiene a propósito: es la clave con la que Windows identifica la
+instalación, así que cambiarlo dejaría la versión vieja instalada junto a la nueva en vez de
+actualizarla. La carpeta de datos sí cambia de nombre (lleva el del producto), por eso al arrancar
+se copian una sola vez `session.dat` y `settings.json` desde la carpeta anterior: nadie tiene que
+volver a iniciar sesión.
 
 ## Requisitos en Odoo
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
+import UnassignedTimeModal from '../components/UnassignedTimeModal';
 import TaskFilters from '../components/TaskFilters';
 import AttendanceCard from '../components/AttendanceCard';
 import TimerBar from '../components/TimerBar';
@@ -18,6 +19,7 @@ import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
 import { DateFilter, matchesDateFilter } from '../lib/taskDates';
 import {
   IconAlert,
+  IconClock,
   IconLogout,
   IconRefresh,
   IconSettings,
@@ -54,6 +56,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showNoProject, setShowNoProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFreeTime, setShowFreeTime] = useState(false);
   // Marca el instante en que se pidió detener: el cronómetro se congela ahí.
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
@@ -194,7 +197,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
         <div className="app-brand">
           <LogoMark size={30} />
           <div className="app-brand-text">
-            <strong>Elideysi</strong>
+            <strong>Elipsys Time</strong>
             <span>Gestión de tiempo y tareas</span>
           </div>
         </div>
@@ -394,12 +397,22 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                     {isFiltered ? `${visibleTasks.length} de ${tasks.length}` : tasks.length}
                   </span>
                 </div>
-                {timer?.kind === 'task' && (
-                  <span className="pill is-brand">
-                    <span className="dot is-live" />
-                    Cronómetro activo
-                  </span>
-                )}
+                <div className="panel-actions">
+                  {timer?.kind === 'task' && (
+                    <span className="pill is-brand">
+                      <span className="dot is-live" />
+                      Cronómetro activo
+                    </span>
+                  )}
+                  <button
+                    className="btn-secondary btn-sm"
+                    onClick={() => setShowFreeTime(true)}
+                    title="Registrar tiempo en un proyecto y asignarle la tarea después"
+                  >
+                    <IconClock size={13} />
+                    Tiempo sin tarea
+                  </button>
+                </div>
               </div>
 
               <TaskFilters
@@ -471,6 +484,17 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+      {showFreeTime && (
+        <UnassignedTimeModal
+          onClose={() => setShowFreeTime(false)}
+          onTimerStarted={() => {
+            setShowFreeTime(false);
+            handleTimerStarted();
+          }}
+          onAssigned={refreshTasks}
+        />
+      )}
     </div>
   );
 }

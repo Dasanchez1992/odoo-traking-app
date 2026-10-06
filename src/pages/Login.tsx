@@ -46,7 +46,7 @@ export default function Login({ onLoggedIn }: Props) {
       <aside className="login-brand">
         <div className="login-brand-top">
           <LogoMark size={34} />
-          <span className="login-brand-name">Elideysi</span>
+          <span className="login-brand-name">Elipsys Time</span>
         </div>
 
         <div className="login-brand-body">

@@ -11,6 +11,7 @@ const {
   shell,
 } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const odooClient = require('./odooClient');
 const odooService = require('./odooService');
@@ -30,7 +31,11 @@ const OVERDUE_POLL_MS = 5 * 60 * 1000;
 const REFRESH_MS = 5 * 60 * 1000;
 const LONG_SHIFT_HOURS = 12;
 const MAX_NOTIFICATIONS = 60;
+// Se mantiene el identificador anterior a propósito: es la clave con la que Windows reconoce
+// la instalación, así que cambiarlo dejaría la versión vieja instalada al lado de la nueva.
 const APP_ID = 'com.elipsys.elideysi';
+// Empaquetada usaba el nombre del producto; en desarrollo, el del paquete.
+const CARPETAS_ANTERIORES = ['Elideysi', 'elideysi'];
 
 let mainWindow = null;
 let miniWindow = null;
@@ -75,6 +80,30 @@ function replaceTimer(next) {
 }
 
 const startedHidden = process.argv.includes('--hidden');
+
+// La carpeta de datos lleva el nombre del producto, así que al pasar a Elipsys Time cambia de
+// sitio. Se arrastran la sesión y la configuración una sola vez para no obligar a entrar de nuevo.
+function migrateUserData() {
+  try {
+    const destino = app.getPath('userData');
+
+    for (const carpeta of CARPETAS_ANTERIORES) {
+      const origen = path.join(app.getPath('appData'), carpeta);
+      if (origen === destino || !fs.existsSync(origen)) continue;
+
+      for (const archivo of ['session.dat', 'settings.json']) {
+        const desde = path.join(origen, archivo);
+        const hasta = path.join(destino, archivo);
+        if (!fs.existsSync(desde) || fs.existsSync(hasta)) continue;
+        fs.mkdirSync(destino, { recursive: true });
+        fs.copyFileSync(desde, hasta);
+        console.log(`Traído ${archivo} desde ${carpeta}`);
+      }
+    }
+  } catch (err) {
+    console.error('No se pudo traer la configuración de la versión anterior:', err.message);
+  }
+}
 
 function showWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -219,10 +248,10 @@ function createTray() {
   try {
     const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray-icon.png'));
     tray = new Tray(icon.resize({ width: 16, height: 16 }));
-    tray.setToolTip('Elideysi - Gestión de tiempo y tareas');
+    tray.setToolTip('Elipsys Time - Gestión de tiempo y tareas');
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Abrir Elideysi', click: showWindow },
+        { label: 'Abrir Elipsys Time', click: showWindow },
         { type: 'separator' },
         {
           label: 'Salir',
@@ -501,6 +530,22 @@ ipcMain.handle('team:schedule', async () => {
   return odooService.fetchTeamSchedule(requireClient());
 });
 
+ipcMain.handle('projects:list', async () => {
+  return odooService.fetchProjects(requireClient());
+});
+
+ipcMain.handle('projects:tasks', async (_event, projectId) => {
+  return odooService.fetchProjectTasks(requireClient(), projectId);
+});
+
+ipcMain.handle('timesheets:unassigned', async () => {
+  return odooService.fetchUnassignedTimesheets(requireClient());
+});
+
+ipcMain.handle('timesheets:assign', async (_event, lineId, taskId) => {
+  return odooService.assignTimesheetTask(requireClient(), lineId, taskId);
+});
+
 ipcMain.handle('tasks:stages', async (_event, projectId) => {
   return odooService.fetchTaskStages(requireClient(), projectId ?? null);
 });
@@ -671,13 +716,18 @@ ipcMain.handle('timer:stop', async (_event, { key, description, stoppedAt, elaps
   const finished = { ...timer, stoppedAt: validStop, elapsedMs, description };
   stopInFlight = true;
   try {
-    const record =
-      finished.kind === 'ticket'
-        ? await odooService.logTicketTimesheet(requireClient(), {
-            ...finished,
-            ticketId: finished.taskId,
-          })
-        : await odooService.logTimesheet(requireClient(), finished);
+    let record;
+    if (finished.kind === 'ticket') {
+      record = await odooService.logTicketTimesheet(requireClient(), {
+        ...finished,
+        ticketId: finished.taskId,
+      });
+    } else if (finished.kind === 'project') {
+      // Tiempo sin tarea: va al proyecto y queda pendiente de asignar.
+      record = await odooService.logProjectTimesheet(requireClient(), finished);
+    } else {
+      record = await odooService.logTimesheet(requireClient(), finished);
+    }
 
     // El cronómetro se descarta solo cuando Odoo confirmó el registro.
     timers = timers.filter((t) => t.key !== finished.key);
@@ -784,6 +834,9 @@ if (!gotLock) {
   app.on('second-instance', showWindow);
 
   app.whenReady().then(() => {
+    // Antes de que nada lea la configuración o la sesión.
+    migrateUserData();
+
     if (process.platform === 'win32') {
       app.setAppUserModelId(APP_ID);
     }

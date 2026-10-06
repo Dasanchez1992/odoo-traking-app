@@ -272,7 +272,7 @@ async function fetchActivities(client) {
 async function completeActivity(client, activityId) {
   if (!Number.isInteger(activityId)) throw new Error('Actividad inválida');
   return client.execute_kw('mail.activity', 'action_feedback', [[activityId]], {
-    feedback: 'Completada desde Elideysi',
+    feedback: 'Completada desde Elipsys Time',
   });
 }
 
@@ -316,7 +316,7 @@ async function logTicketTimesheet(
       helpdesk_ticket_id: ticketId,
       project_id: resolvedProjectId,
       unit_amount: unitAmount,
-      name: (description || '').trim() || 'Registrado desde Elideysi',
+      name: (description || '').trim() || 'Registrado desde Elipsys Time',
       date: new Date(startedAt).toISOString().slice(0, 10),
     },
   ]);
@@ -344,7 +344,7 @@ async function logTimesheet(client, { taskId, projectId, startedAt, elapsedMs, d
       task_id: taskId,
       project_id: resolvedProjectId,
       unit_amount: unitAmount,
-      name: (description || '').trim() || 'Registrado desde Elideysi',
+      name: (description || '').trim() || 'Registrado desde Elipsys Time',
       date: new Date(startedAt).toISOString().slice(0, 10),
     },
   ]);
@@ -898,6 +898,101 @@ async function fetchTeamSchedule(client) {
   };
 }
 
+// Proyectos donde el usuario puede imputar tiempo. Sin permiso de lectura se cae a los
+// proyectos de sus propias tareas, que es lo mínimo que siempre puede ver.
+async function fetchProjects(client) {
+  try {
+    return await client.execute_kw(
+      'project.project',
+      'search_read',
+      [[['active', '=', true]], ['name']],
+      { order: 'name asc', limit: 300 },
+    );
+  } catch {
+    const tasks = await fetchAssignedTasks(client);
+    const vistos = new Map();
+    tasks.forEach((task) => {
+      if (Array.isArray(task.project_id)) vistos.set(task.project_id[0], task.project_id[1]);
+    });
+    return [...vistos].map(([id, name]) => ({ id, name }));
+  }
+}
+
+// Tiempo imputado al proyecto sin tarea: Odoo exige proyecto en la hoja de horas, pero la
+// tarea puede quedar pendiente y asignarse después.
+async function logProjectTimesheet(client, { projectId, startedAt, elapsedMs, description }) {
+  if (!Number.isInteger(projectId)) throw new Error('Elige un proyecto para registrar el tiempo');
+
+  const hours = elapsedMs / 3600000;
+  const unitAmount = Math.max(MIN_BILLABLE_HOURS, Math.round(hours * 100) / 100);
+
+  return client.execute_kw('account.analytic.line', 'create', [
+    {
+      project_id: projectId,
+      unit_amount: unitAmount,
+      name: (description || '').trim() || 'Registrado desde Elipsys Time',
+      date: new Date(startedAt).toISOString().slice(0, 10),
+    },
+  ]);
+}
+
+async function fetchUnassignedTimesheets(client, days = 30) {
+  const employeeId = await getEmployeeId(client);
+  const desde = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+  return client.execute_kw(
+    'account.analytic.line',
+    'search_read',
+    [
+      [
+        ['employee_id', '=', employeeId],
+        ['task_id', '=', false],
+        ['project_id', '!=', false],
+        ['date', '>=', desde],
+      ],
+      ['name', 'date', 'unit_amount', 'project_id'],
+    ],
+    { order: 'date desc, id desc', limit: 100 },
+  );
+}
+
+// Tareas abiertas de un proyecto, para elegir a cuál mover el tiempo.
+async function fetchProjectTasks(client, projectId) {
+  if (!Number.isInteger(projectId)) return [];
+  const variantes = [
+    [['project_id', '=', projectId], ['active', '=', true], ['state', 'not in', CLOSED_TASK_STATES]],
+    [['project_id', '=', projectId], ['active', '=', true]],
+  ];
+
+  let lastError;
+  for (const domain of variantes) {
+    try {
+      return await client.execute_kw('project.task', 'search_read', [domain, ['name', 'stage_id']], {
+        order: 'name asc',
+        limit: 200,
+      });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+// La tarea manda sobre el proyecto: moverla a otra de distinto proyecto arrastra el project_id,
+// que es lo que hace Odoo al reasignar una línea.
+async function assignTimesheetTask(client, lineId, taskId) {
+  if (!Number.isInteger(lineId) || !Number.isInteger(taskId)) {
+    throw new Error('Línea o tarea inválida');
+  }
+
+  const [task] = await client.execute_kw('project.task', 'read', [[taskId], ['project_id']]);
+  const values = { task_id: taskId };
+  if (task && Array.isArray(task.project_id)) values.project_id = task.project_id[0];
+
+  await client.execute_kw('account.analytic.line', 'write', [[lineId], values]);
+  return { id: lineId, taskId };
+}
+
 module.exports = {
   canManageTeam,
   fetchTeamProductivity,
@@ -914,6 +1009,11 @@ module.exports = {
   fetchOverdueTasks,
   fetchProductivity,
   logTimesheet,
+  logProjectTimesheet,
+  fetchProjects,
+  fetchProjectTasks,
+  fetchUnassignedTimesheets,
+  assignTimesheetTask,
   logTicketTimesheet,
   getEmployeeId,
   getOpenAttendance,

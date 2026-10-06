@@ -93,7 +93,7 @@ jobs:
             echo
             echo "## Instalación"
             echo
-            echo "Descarga \`Elideysi-${GITHUB_REF_NAME#v}-setup.exe\`. Windows mostrará un aviso de"
+            echo "Descarga \`ElipsysTime-${GITHUB_REF_NAME#v}-setup.exe\`. Windows mostrará un aviso de"
             echo "SmartScreen porque el instalador no está firmado: elige «Más información» y"
             echo "«Ejecutar de todas formas». Si ya tienes la aplicación instalada, se actualiza sola."
             if [ -n "$anterior" ]; then
@@ -107,7 +107,7 @@ jobs:
       - name: Guardar el instalador como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: elideysi-instalador
+          name: elipsys-time-instalador
           path: |
             release/*.exe
             release/latest.yml

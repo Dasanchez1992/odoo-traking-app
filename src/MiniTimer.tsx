@@ -84,8 +84,8 @@ export default function MiniTimer() {
           <button
             className="mini-btn"
             onClick={() => reportar('abrir la app', window.api.showMainWindow())}
-            title="Abrir Elideysi"
-            aria-label="Abrir Elideysi"
+            title="Abrir Elipsys Time"
+            aria-label="Abrir Elipsys Time"
           >
             <IconExpand size={13} />
           </button>

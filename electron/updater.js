@@ -52,7 +52,7 @@ function setupAutoUpdater({ onNotify, onStatus } = {}) {
   updater.on('update-downloaded', async (info) => {
     setStatus({ state: 'ready', version: info.version });
     if (onNotify) {
-      onNotify('Actualización lista', `Elideysi ${info.version} se instalará al reiniciar.`, 'update');
+      onNotify('Actualización lista', `Elipsys Time ${info.version} se instalará al reiniciar.`, 'update');
     }
     const { response } = await dialog.showMessageBox({
       type: 'info',
@@ -60,7 +60,7 @@ function setupAutoUpdater({ onNotify, onStatus } = {}) {
       defaultId: 0,
       cancelId: 1,
       title: 'Actualización disponible',
-      message: `Elideysi ${info.version} está lista para instalarse.`,
+      message: `Elipsys Time ${info.version} está lista para instalarse.`,
       detail: 'Se cerrará la aplicación para completar la actualización.',
     });
     if (response === 0) updater.quitAndInstall();

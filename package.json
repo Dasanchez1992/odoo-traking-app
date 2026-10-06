@@ -1,7 +1,7 @@
 {
-  "name": "elideysi",
+  "name": "elipsys-time",
   "version": "1.7.0",
-  "description": "Elideysi: app de escritorio para ver tareas asignadas en Odoo, registrar tiempo trabajado, fichar entrada/salida y recibir avisos de tareas caducadas",
+  "description": "Elipsys Time: app de escritorio para ver tareas asignadas en Odoo, registrar tiempo trabajado, fichar entrada/salida y recibir avisos de tareas caducadas",
   "main": "electron/main.js",
   "author": "Danilo Sanchez",
   "license": "UNLICENSED",
@@ -33,8 +33,8 @@
   },
   "build": {
     "appId": "com.elipsys.elideysi",
-    "productName": "Elideysi",
-    "artifactName": "${productName}-${version}-setup.${ext}",
+    "productName": "Elipsys Time",
+    "artifactName": "ElipsysTime-${version}-setup.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -63,7 +63,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Elideysi"
+      "shortcutName": "Elipsys Time"
     },
     "linux": {
       "target": "AppImage"

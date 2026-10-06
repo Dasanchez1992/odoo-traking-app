@@ -45,6 +45,26 @@ export interface TicketsResult {
   reason?: string;
 }
 
+export interface OdooProject {
+  id: number;
+  name: string;
+}
+
+export interface ProjectTask {
+  id: number;
+  name: string;
+  stage_id: [number, string] | false;
+}
+
+/** Línea de hoja de horas imputada al proyecto, sin tarea todavía. */
+export interface UnassignedTimesheet {
+  id: number;
+  name: string;
+  date: string;
+  unit_amount: number;
+  project_id: [number, string] | false;
+}
+
 export interface TaskStage {
   id: number;
   name: string;
@@ -86,7 +106,7 @@ export interface ActivitiesResult {
   reason?: string;
 }
 
-export type TimerKind = 'task' | 'ticket';
+export type TimerKind = 'task' | 'ticket' | 'project';
 
 export interface TimerContext {
   partnerName: string | null;
@@ -222,6 +242,11 @@ export interface ElectronApi {
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
 
+  getProjects: () => Promise<OdooProject[]>;
+  getProjectTasks: (projectId: number) => Promise<ProjectTask[]>;
+  getUnassignedTimesheets: () => Promise<UnassignedTimesheet[]>;
+  assignTimesheetTask: (lineId: number, taskId: number) => Promise<{ id: number; taskId: number }>;
+
   getTaskStages: (projectId: number | null) => Promise<TaskStage[]>;
   setTaskStage: (taskId: number, stageId: number) => Promise<{ stage_id: [number, string] | false }>;
   getTaskMessages: (taskId: number) => Promise<OdooMessage[]>;
@@ -243,7 +268,10 @@ export interface ElectronApi {
   getTeamSchedule: () => Promise<TeamSchedule>;
 
   getTimerState: () => Promise<TimerState[]>;
-  startTimer: (item: OdooTask | OdooTicket, kind?: TimerKind) => Promise<TimerState>;
+  startTimer: (
+    item: OdooTask | OdooTicket | { id: number; name: string; project_id: [number, string] },
+    kind?: TimerKind,
+  ) => Promise<TimerState>;
 
   listTickets: () => Promise<TicketsResult>;
   openTicketInOdoo: (ticketId: number) => Promise<string>;

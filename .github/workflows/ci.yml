@@ -58,7 +58,7 @@ jobs:
       - name: Guardar el instalador como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: elideysi-instalador-pr${{ github.event.number }}
+          name: elipsys-time-instalador-pr${{ github.event.number }}
           path: release/*.exe
           if-no-files-found: error
           retention-days: 14
