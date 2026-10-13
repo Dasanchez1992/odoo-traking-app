@@ -124,6 +124,12 @@ export interface UpdateStatus {
   message?: string;
 }
 
+export interface ReleaseNotes {
+  version: string;
+  items: string[];
+  url: string | null;
+}
+
 export interface AppNotification {
   id: string;
   kind: string;
@@ -225,6 +231,7 @@ export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
   floatingWidget: boolean;
+  showReleaseNotes: boolean;
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */
   autoCheckIn: string;
@@ -291,6 +298,9 @@ export interface ElectronApi {
   getUpdateStatus: () => Promise<UpdateStatus>;
   checkForUpdates: () => Promise<UpdateStatus>;
   installUpdate: () => Promise<boolean>;
+  getPendingReleaseNotes: () => Promise<ReleaseNotes | null>;
+  markReleaseNotesSeen: () => Promise<boolean>;
+  openReleasePage: () => Promise<boolean>;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 
   listNotifications: () => Promise<AppNotification[]>;

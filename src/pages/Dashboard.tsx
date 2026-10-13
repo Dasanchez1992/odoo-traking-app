@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
 import UnassignedTimeModal from '../components/UnassignedTimeModal';
+import ReleaseNotesModal from '../components/ReleaseNotesModal';
 import TaskFilters from '../components/TaskFilters';
 import AttendanceCard from '../components/AttendanceCard';
 import TimerBar from '../components/TimerBar';
@@ -17,6 +18,7 @@ import NotificationsMenu from '../components/NotificationsMenu';
 import { initialsOf } from '../lib/format';
 import { ecuadorDateKey, isPast, parseOdooDateTime } from '../lib/odooDate';
 import { DateFilter, matchesDateFilter } from '../lib/taskDates';
+import { ReleaseNotes } from '../types';
 import {
   IconAlert,
   IconClock,
@@ -57,6 +59,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [showNoProject, setShowNoProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFreeTime, setShowFreeTime] = useState(false);
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNotes | null>(null);
   // Marca el instante en que se pidió detener: el cronómetro se congela ahí.
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
@@ -121,6 +124,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
       setRefreshSignal((n) => n + 1);
     });
     window.api.listOverdueTasks().then(setOverdueTasks).catch(() => {});
+    // Tras una actualización automática, lo primero es contar qué cambió.
+    window.api.getPendingReleaseNotes().then(setReleaseNotes).catch(() => {});
     window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
     return () => {
       unsubscribe();
@@ -484,6 +489,16 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+      {releaseNotes && (
+        <ReleaseNotesModal
+          notes={releaseNotes}
+          onClose={() => {
+            setReleaseNotes(null);
+            window.api.markReleaseNotesSeen().catch(() => {});
+          }}
+        />
+      )}
 
       {showFreeTime && (
         <UnassignedTimeModal

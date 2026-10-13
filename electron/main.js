@@ -20,6 +20,7 @@ const settingsStore = require('./settingsStore');
 const { formatOdooDateTime } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
+const { pendingReleaseNotes } = require('./releaseNotes');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -544,6 +545,32 @@ ipcMain.handle('timesheets:unassigned', async () => {
 
 ipcMain.handle('timesheets:assign', async (_event, lineId, taskId) => {
   return odooService.assignTimesheetTask(requireClient(), lineId, taskId);
+});
+
+// Novedades de la versión instalada: se muestran una sola vez, después de actualizar.
+let lastReleaseUrl = null;
+
+ipcMain.handle('updates:pending-notes', async () => {
+  const version = app.getVersion();
+  const notes = await pendingReleaseNotes({
+    version,
+    settings: settingsStore.read(),
+    markSeen: () => settingsStore.write({ lastSeenVersion: version }),
+  });
+  if (notes) lastReleaseUrl = notes.url;
+  return notes;
+});
+
+ipcMain.handle('updates:notes-seen', async () => {
+  settingsStore.write({ lastSeenVersion: app.getVersion() });
+  return true;
+});
+
+ipcMain.handle('updates:open-release', async () => {
+  // La URL la resolvió el proceso principal: el renderer no puede abrir cualquier enlace.
+  if (!lastReleaseUrl) return false;
+  await shell.openExternal(lastReleaseUrl);
+  return true;
 });
 
 ipcMain.handle('timesheets:delete', async (_event, lineId) => {

@@ -52,7 +52,9 @@ export default function SettingsModal({ onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  async function toggle(key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget' | 'autoAttendance') {
+  async function toggle(
+    key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget' | 'autoAttendance' | 'showReleaseNotes',
+  ) {
     if (!settings) return;
     setSaving(true);
     setError(null);
@@ -205,6 +207,23 @@ export default function SettingsModal({ onClose }: Props) {
                   checked={settings.floatingWidget}
                   disabled={saving}
                   onChange={() => toggle('floatingWidget')}
+                />
+              </label>
+
+              <label className="setting-row">
+                <div className="setting-text">
+                  <strong>Avisar de novedades al actualizar</strong>
+                  <span>
+                    Después de una actualización automática, muestra una vez la lista de cambios
+                    que trae la versión instalada.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  checked={settings.showReleaseNotes}
+                  disabled={saving}
+                  onChange={() => toggle('showReleaseNotes')}
                 />
               </label>
 

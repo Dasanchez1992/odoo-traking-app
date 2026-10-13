@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('api', {
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
+  getPendingReleaseNotes: () => ipcRenderer.invoke('updates:pending-notes'),
+  markReleaseNotesSeen: () => ipcRenderer.invoke('updates:notes-seen'),
+  openReleasePage: () => ipcRenderer.invoke('updates:open-release'),
   onUpdateStatus: (callback) => {
     const listener = (_event, status) => callback(status);
     ipcRenderer.on('update:status', listener);
