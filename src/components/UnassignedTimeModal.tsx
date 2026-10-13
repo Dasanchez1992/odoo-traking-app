@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { OdooProject, ProjectTask, UnassignedTimesheet } from '../types';
 import { formatOdooDateShort } from '../lib/odooDate';
-import { IconAlert, IconCheck, IconClose, IconPlay } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconPlay, IconSearch, IconTrash } from './Icons';
 
 interface Props {
   onClose: () => void;
@@ -24,6 +24,10 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
   const [selection, setSelection] = useState<Record<number, number>>({});
 
   const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [projectQuery, setProjectQuery] = useState('');
+  const [confirmLine, setConfirmLine] = useState<number | null>(null);
+  const comboRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [busyLine, setBusyLine] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
@@ -66,16 +70,40 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !starting && busyLine === null) onClose();
+      if (e.key !== 'Escape') return;
+      // Escape cierra lo de más arriba: primero el buscador, luego la confirmación.
+      if (projectOpen) {
+        setProjectOpen(false);
+        return;
+      }
+      if (confirmLine !== null) {
+        setConfirmLine(null);
+        return;
+      }
+      if (!starting && busyLine === null) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, starting, busyLine]);
+  }, [onClose, starting, busyLine, projectOpen, confirmLine]);
+
+  useEffect(() => {
+    if (!projectOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!comboRef.current?.contains(event.target as Node)) setProjectOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [projectOpen]);
 
   const proyectoElegido = useMemo(
     () => projects.find((p) => p.id === projectId) ?? null,
     [projects, projectId],
   );
+
+  const proyectosFiltrados = useMemo(() => {
+    const q = projectQuery.trim().toLowerCase();
+    return q ? projects.filter((p) => p.name.toLowerCase().includes(q)) : projects;
+  }, [projects, projectQuery]);
 
   async function handleStart() {
     if (!proyectoElegido) {
@@ -98,6 +126,21 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
       setError(err instanceof Error ? err.message : 'No se pudo iniciar el cronómetro');
     } finally {
       setStarting(false);
+    }
+  }
+
+  async function handleDelete(line: UnassignedTimesheet) {
+    setBusyLine(line.id);
+    setError(null);
+    try {
+      await window.api.deleteTimesheet(line.id);
+      setLines((actual) => actual.filter((l) => l.id !== line.id));
+      setConfirmLine(null);
+      onAssigned();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el registro');
+    } finally {
+      setBusyLine(null);
     }
   }
 
@@ -143,24 +186,65 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
               Proyecto
             </label>
             <div className="free-time-start">
-              <select
-                id="tiempo-proyecto"
-                value={projectId ?? ''}
-                onChange={(e) => setProjectId(Number(e.target.value))}
-                disabled={loading || projects.length === 0}
-              >
-                {projects.length === 0 && <option value="">Sin proyectos disponibles</option>}
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
+              <div className="combo" ref={comboRef}>
+                <button
+                  type="button"
+                  className="combo-input"
+                  onClick={() => setProjectOpen((v) => !v)}
+                  disabled={loading || projects.length === 0}
+                  aria-haspopup="listbox"
+                  aria-expanded={projectOpen}
+                  title={proyectoElegido?.name}
+                >
+                  <span>
+                    {projects.length === 0
+                      ? 'Sin proyectos disponibles'
+                      : (proyectoElegido?.name ?? 'Elegir proyecto...')}
+                  </span>
+                </button>
+
+                {projectOpen && (
+                  <div className="combo-list" role="listbox">
+                    <div className="combo-search">
+                      <IconSearch size={13} />
+                      <input
+                        type="search"
+                        autoFocus
+                        placeholder="Buscar proyecto..."
+                        value={projectQuery}
+                        onChange={(e) => setProjectQuery(e.target.value)}
+                      />
+                    </div>
+
+                    {proyectosFiltrados.length === 0 ? (
+                      <p className="notif-empty">Sin coincidencias.</p>
+                    ) : (
+                      proyectosFiltrados.map((project) => (
+                        <button
+                          type="button"
+                          key={project.id}
+                          className={`combo-option ${project.id === projectId ? 'is-active' : ''}`}
+                          title={project.name}
+                          onClick={() => {
+                            setProjectId(project.id);
+                            setProjectQuery('');
+                            setProjectOpen(false);
+                          }}
+                        >
+                          {project.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button onClick={handleStart} disabled={starting || !proyectoElegido}>
                 <IconPlay size={13} />
                 {starting ? 'Iniciando...' : 'Iniciar cronómetro'}
               </button>
             </div>
+
             <span className="field-hint">
               Odoo exige proyecto en la hoja de horas, pero la tarea puede quedar pendiente. Al
               detener el cronómetro el tiempo queda aquí hasta que le asignes una.
@@ -193,33 +277,64 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
                         {line.name}
                       </p>
 
-                      <div className="free-time-assign">
-                        <select
-                          value={selection[line.id] ?? ''}
-                          onChange={(e) =>
-                            setSelection((actual) => ({ ...actual, [line.id]: Number(e.target.value) }))
-                          }
-                          disabled={tareas.length === 0}
-                          aria-label={`Tarea para el tiempo del ${line.date}`}
-                        >
-                          <option value="">
-                            {tareas.length === 0 ? 'Sin tareas abiertas' : 'Elegir tarea...'}
-                          </option>
-                          {tareas.map((task) => (
-                            <option key={task.id} value={task.id}>
-                              {task.name}
+                      {confirmLine === line.id ? (
+                        <div className="free-time-confirm">
+                          <span>¿Eliminar este registro de {formatHours(line.unit_amount)}?</span>
+                          <button
+                            className="btn-danger btn-sm"
+                            onClick={() => handleDelete(line)}
+                            disabled={busyLine === line.id}
+                          >
+                            {busyLine === line.id ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                          <button
+                            className="btn-secondary btn-sm"
+                            onClick={() => setConfirmLine(null)}
+                            disabled={busyLine === line.id}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="free-time-assign">
+                          <select
+                            value={selection[line.id] ?? ''}
+                            onChange={(e) =>
+                              setSelection((actual) => ({
+                                ...actual,
+                                [line.id]: Number(e.target.value),
+                              }))
+                            }
+                            disabled={tareas.length === 0}
+                            aria-label={`Tarea para el tiempo del ${line.date}`}
+                          >
+                            <option value="">
+                              {tareas.length === 0 ? 'Sin tareas abiertas' : 'Elegir tarea...'}
                             </option>
-                          ))}
-                        </select>
-                        <button
-                          className="btn-secondary btn-sm"
-                          onClick={() => handleAssign(line)}
-                          disabled={busyLine === line.id || !selection[line.id]}
-                        >
-                          <IconCheck size={13} />
-                          {busyLine === line.id ? 'Asignando...' : 'Asignar'}
-                        </button>
-                      </div>
+                            {tareas.map((task) => (
+                              <option key={task.id} value={task.id}>
+                                {task.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="btn-secondary btn-sm"
+                            onClick={() => handleAssign(line)}
+                            disabled={busyLine === line.id || !selection[line.id]}
+                          >
+                            <IconCheck size={13} />
+                            {busyLine === line.id ? 'Asignando...' : 'Asignar'}
+                          </button>
+                          <button
+                            className="btn-ghost btn-icon free-time-delete"
+                            onClick={() => setConfirmLine(line.id)}
+                            title="Eliminar este registro de Odoo"
+                            aria-label="Eliminar registro"
+                          >
+                            <IconTrash size={14} />
+                          </button>
+                        </div>
+                      )}
                     </li>
                   );
                 })}

@@ -3391,3 +3391,138 @@ textarea:focus {
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* Selector con buscador: los nombres de proyecto son largos y un select nativo no se filtra. */
+.combo {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.combo-input {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.combo-input span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combo-input::after {
+  content: '';
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-right: 1.5px solid var(--text-subtle);
+  border-bottom: 1.5px solid var(--text-subtle);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.combo-input:hover:not(:disabled) {
+  border-color: var(--brand-300);
+}
+
+.combo-input:disabled {
+  color: var(--text-subtle);
+  cursor: not-allowed;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.combo-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.combo-search svg {
+  position: absolute;
+  left: 9px;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.combo-search input {
+  width: 100%;
+  padding: 7px 9px 7px 28px;
+  font-size: 13px;
+}
+
+.combo-option {
+  padding: 7px 9px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combo-option:hover {
+  background: var(--surface-hover);
+}
+
+.combo-option.is-active {
+  color: var(--brand-600);
+  background: var(--brand-50);
+  font-weight: 600;
+}
+
+.free-time-delete {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.free-time-delete:hover {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+}
+
+.free-time-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.free-time-confirm span {
+  margin-right: auto;
+}

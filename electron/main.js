@@ -546,6 +546,10 @@ ipcMain.handle('timesheets:assign', async (_event, lineId, taskId) => {
   return odooService.assignTimesheetTask(requireClient(), lineId, taskId);
 });
 
+ipcMain.handle('timesheets:delete', async (_event, lineId) => {
+  return odooService.deleteTimesheet(requireClient(), lineId);
+});
+
 ipcMain.handle('tasks:stages', async (_event, projectId) => {
   return odooService.fetchTaskStages(requireClient(), projectId ?? null);
 });

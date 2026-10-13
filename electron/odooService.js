@@ -978,6 +978,14 @@ async function fetchProjectTasks(client, projectId) {
   throw lastError;
 }
 
+// Las reglas de Odoo ya limitan el borrado a las líneas propias; si la hoja está validada,
+// el error que devuelve Odoo se muestra tal cual al usuario.
+async function deleteTimesheet(client, lineId) {
+  if (!Number.isInteger(lineId)) throw new Error('Línea inválida');
+  await client.execute_kw('account.analytic.line', 'unlink', [[lineId]]);
+  return { id: lineId };
+}
+
 // La tarea manda sobre el proyecto: moverla a otra de distinto proyecto arrastra el project_id,
 // que es lo que hace Odoo al reasignar una línea.
 async function assignTimesheetTask(client, lineId, taskId) {
@@ -1014,6 +1022,7 @@ module.exports = {
   fetchProjectTasks,
   fetchUnassignedTimesheets,
   assignTimesheetTask,
+  deleteTimesheet,
   logTicketTimesheet,
   getEmployeeId,
   getOpenAttendance,

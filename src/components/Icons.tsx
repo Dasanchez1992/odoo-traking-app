@@ -233,3 +233,13 @@ export function IconChat({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconTrash({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 7h16M10 11v6M14 11v6" />
+      <path d="M6 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5L18 7" />
+      <path d="M9.5 7V4.8a.8.8 0 0 1 .8-.8h3.4a.8.8 0 0 1 .8.8V7" />
+    </svg>
+  );
+}
