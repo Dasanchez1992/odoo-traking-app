@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { OdooProject, ProjectTask, UnassignedTimesheet } from '../types';
 import { formatOdooDateShort } from '../lib/odooDate';
-import { IconAlert, IconCheck, IconClose, IconPlay, IconSearch, IconTrash } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconPlay, IconTrash } from './Icons';
+import SearchSelect from './SearchSelect';
 
 interface Props {
   onClose: () => void;
@@ -24,10 +25,8 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
   const [selection, setSelection] = useState<Record<number, number>>({});
 
   const [projectId, setProjectId] = useState<number | null>(null);
-  const [projectOpen, setProjectOpen] = useState(false);
-  const [projectQuery, setProjectQuery] = useState('');
+  const [openCombo, setOpenCombo] = useState<string | null>(null);
   const [confirmLine, setConfirmLine] = useState<number | null>(null);
-  const comboRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [busyLine, setBusyLine] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
@@ -72,8 +71,8 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       // Escape cierra lo de más arriba: primero el buscador, luego la confirmación.
-      if (projectOpen) {
-        setProjectOpen(false);
+      if (openCombo !== null) {
+        setOpenCombo(null);
         return;
       }
       if (confirmLine !== null) {
@@ -84,26 +83,12 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, starting, busyLine, projectOpen, confirmLine]);
-
-  useEffect(() => {
-    if (!projectOpen) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!comboRef.current?.contains(event.target as Node)) setProjectOpen(false);
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [projectOpen]);
+  }, [onClose, starting, busyLine, openCombo, confirmLine]);
 
   const proyectoElegido = useMemo(
     () => projects.find((p) => p.id === projectId) ?? null,
     [projects, projectId],
   );
-
-  const proyectosFiltrados = useMemo(() => {
-    const q = projectQuery.trim().toLowerCase();
-    return q ? projects.filter((p) => p.name.toLowerCase().includes(q)) : projects;
-  }, [projects, projectQuery]);
 
   async function handleStart() {
     if (!proyectoElegido) {
@@ -186,58 +171,18 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
               Proyecto
             </label>
             <div className="free-time-start">
-              <div className="combo" ref={comboRef}>
-                <button
-                  type="button"
-                  className="combo-input"
-                  onClick={() => setProjectOpen((v) => !v)}
-                  disabled={loading || projects.length === 0}
-                  aria-haspopup="listbox"
-                  aria-expanded={projectOpen}
-                  title={proyectoElegido?.name}
-                >
-                  <span>
-                    {projects.length === 0
-                      ? 'Sin proyectos disponibles'
-                      : (proyectoElegido?.name ?? 'Elegir proyecto...')}
-                  </span>
-                </button>
-
-                {projectOpen && (
-                  <div className="combo-list" role="listbox">
-                    <div className="combo-search">
-                      <IconSearch size={13} />
-                      <input
-                        type="search"
-                        autoFocus
-                        placeholder="Buscar proyecto..."
-                        value={projectQuery}
-                        onChange={(e) => setProjectQuery(e.target.value)}
-                      />
-                    </div>
-
-                    {proyectosFiltrados.length === 0 ? (
-                      <p className="notif-empty">Sin coincidencias.</p>
-                    ) : (
-                      proyectosFiltrados.map((project) => (
-                        <button
-                          type="button"
-                          key={project.id}
-                          className={`combo-option ${project.id === projectId ? 'is-active' : ''}`}
-                          title={project.name}
-                          onClick={() => {
-                            setProjectId(project.id);
-                            setProjectQuery('');
-                            setProjectOpen(false);
-                          }}
-                        >
-                          {project.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+              <SearchSelect
+                options={projects}
+                value={projectId}
+                onChange={setProjectId}
+                isOpen={openCombo === 'project'}
+                onOpenChange={(open) => setOpenCombo(open ? 'project' : null)}
+                placeholder="Elegir proyecto..."
+                emptyLabel="Sin proyectos disponibles"
+                searchPlaceholder="Buscar proyecto..."
+                disabled={loading}
+                ariaLabel="Proyecto"
+              />
 
               <button onClick={handleStart} disabled={starting || !proyectoElegido}>
                 <IconPlay size={13} />
@@ -297,27 +242,20 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
                         </div>
                       ) : (
                         <div className="free-time-assign">
-                          <select
-                            value={selection[line.id] ?? ''}
-                            onChange={(e) =>
-                              setSelection((actual) => ({
-                                ...actual,
-                                [line.id]: Number(e.target.value),
-                              }))
+                          <SearchSelect
+                            options={tareas}
+                            value={selection[line.id] ?? null}
+                            onChange={(taskId) =>
+                              setSelection((actual) => ({ ...actual, [line.id]: taskId }))
                             }
-                            disabled={tareas.length === 0}
-                            aria-label={`Tarea para el tiempo del ${line.date}`}
-                          >
-                            <option value="">
-                              {tareas.length === 0 ? 'Sin tareas abiertas' : 'Elegir tarea...'}
-                            </option>
-                            {tareas.map((task) => (
-                              <option key={task.id} value={task.id}>
-                                {task.name}
-                              </option>
-                            ))}
-                          </select>
-                          <button
+                            isOpen={openCombo === `line:${line.id}`}
+                            onOpenChange={(open) => setOpenCombo(open ? `line:${line.id}` : null)}
+                            placeholder="Elegir tarea..."
+                            emptyLabel="Sin tareas abiertas"
+                            searchPlaceholder="Buscar tarea..."
+                            ariaLabel={`Tarea para el tiempo del ${line.date}`}
+                          />
+                                                    <button
                             className="btn-secondary btn-sm"
                             onClick={() => handleAssign(line)}
                             disabled={busyLine === line.id || !selection[line.id]}
