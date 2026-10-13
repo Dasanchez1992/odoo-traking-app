@@ -21,6 +21,7 @@ const { formatOdooDateTime } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
+const { attachContextMenu } = require('./contextMenu');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -140,6 +141,8 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+
+  attachContextMenu(mainWindow);
 
   mainWindow.once('ready-to-show', () => {
     if (!startedHidden) mainWindow.show();
@@ -875,6 +878,13 @@ if (!gotLock) {
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
       callback(false);
     });
+
+    // El corrector se queda en español: la app y lo que se escribe en ella lo son.
+    try {
+      session.defaultSession.setSpellCheckerLanguages(['es']);
+    } catch (err) {
+      console.error('No se pudo fijar el idioma del corrector:', err.message);
+    }
 
     floatingWidget = settingsStore.read().floatingWidget;
     applyStartAtLogin(settingsStore.read().startAtLogin);
