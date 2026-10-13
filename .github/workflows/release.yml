@@ -133,6 +133,9 @@ jobs:
 
       # Los archivos se suben por separado y uno a uno: así el log dice cuál falla y cuánto
       # tarda, en vez de quedarse en una única operación opaca que puede colgarse.
+      # latest.yml va al final a propósito: es lo que dispara la actualización automática, y
+      # publicarlo antes que el instalador deja una ventana en la que la app lo lee y luego no
+      # encuentra el .exe que acaba de prometer.
       - name: Subir los archivos al release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
@@ -142,7 +145,7 @@ jobs:
           tag="${GITHUB_REF_NAME}"
           subir_url=$(gh release view "$tag" --repo "$repo" --json uploadUrl --jq .uploadUrl | sed 's/{.*}//')
 
-          for archivo in release/latest.yml release/*.exe release/*.blockmap; do
+          for archivo in release/*.exe release/*.blockmap release/latest.yml; do
             [ -f "$archivo" ] || continue
             nombre=$(basename "$archivo")
             echo "Subiendo $nombre ($(stat -c %s "$archivo") bytes)..."
