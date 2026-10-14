@@ -809,7 +809,7 @@ ipcMain.handle('attendance:status', async () => {
       employeeId,
       open: null,
       readable: false,
-      message: attendanceError(err).message,
+      message: odooService.attendanceError(err).message,
     };
   }
 });
@@ -824,7 +824,7 @@ ipcMain.handle('attendance:close-open', async () => {
     const employeeId = await odooService.getEmployeeId(c);
     return await odooService.closeOpenAttendance(c, employeeId);
   } catch (err) {
-    throw attendanceError(err);
+    throw odooService.attendanceError(err);
   }
 });
 
@@ -834,7 +834,7 @@ ipcMain.handle('attendance:toggle', async () => {
     const employeeId = await odooService.getEmployeeId(c);
     return await odooService.toggleAttendance(c, employeeId);
   } catch (err) {
-    throw attendanceError(err);
+    throw odooService.attendanceError(err);
   }
 });
 

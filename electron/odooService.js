@@ -374,12 +374,39 @@ function translateAttendanceWriteError(err) {
         'Ciérralo con «Cerrar fichaje abierto» antes de volver a marcar entrada.',
     );
   }
-  return err;
+  return attendanceError(err);
 }
 
+// Los mensajes de Odoo llegan traducidos, así que no basta con buscar las palabras en inglés.
 function isAccessError(err) {
   const msg = (err && err.message) || '';
-  return /access|permis|derecho|allowed|AccessError/i.test(msg);
+  return /access|acceso|permis|permitid|derecho|allowed|no puede crear|cannot create|AccessError/i.test(
+    msg,
+  );
+}
+
+// Al fichar, Odoo recalcula las horas extra y crea líneas de hr.attendance.overtime.line en el
+// contexto del propio usuario. Sin el grupo de asistencias eso falla y tumba toda la marcación,
+// así que el error técnico se traduce a lo único que la desbloquea.
+function attendanceError(err) {
+  const msg = (err && err.message) || '';
+
+  if (/overtime/i.test(msg) && isAccessError(err)) {
+    return new Error(
+      'Odoo calcula tus horas extra al fichar y tu usuario no tiene permiso para crear esos ' +
+        'registros, así que rechaza la marcación entera. Pide que te asignen como «Responsable ' +
+        'de asistencia» en tu ficha de empleado de Odoo; con eso Odoo te da el permiso que falta.',
+    );
+  }
+
+  if (/attendance|asistencia/i.test(msg) && isAccessError(err)) {
+    return new Error(
+      'Tu usuario de Odoo no tiene permisos sobre Asistencias. Pide al administrador que te ' +
+        'asigne el grupo «Asistencias → Usuario: Leer sus propias asistencias».',
+    );
+  }
+
+  return err;
 }
 
 // Los usuarios sin grupo de asistencias no pueden leer hr.attendance, pero sí su propia ficha de
@@ -1027,6 +1054,7 @@ module.exports = {
   getEmployeeId,
   getOpenAttendance,
   toggleAttendance,
+  attendanceError,
   closeOpenAttendance,
   diagnoseAttendance,
 };
