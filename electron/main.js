@@ -501,6 +501,14 @@ ipcMain.handle('tasks:list', async () => {
   return odooService.fetchAssignedTasks(requireClient());
 });
 
+ipcMain.handle('tasks:search-all', async (_event, query) => {
+  return odooService.searchAllTasks(requireClient(), { query });
+});
+
+ipcMain.handle('tickets:search-all', async (_event, query) => {
+  return odooService.searchAllTickets(requireClient(), { query });
+});
+
 ipcMain.handle('tasks:overdue', async () => {
   return odooService.fetchOverdueTasks(requireClient());
 });

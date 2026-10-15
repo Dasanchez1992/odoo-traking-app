@@ -11,6 +11,9 @@ interface Props {
   onRequestStop: () => void;
   frozenAt: number | null;
   refreshSignal: number;
+  /** Si el padre manda los tickets, esta lista solo los pinta: ni consulta ni filtra. */
+  tickets?: OdooTicket[];
+  externalLoading?: boolean;
 }
 
 export default function TicketList({
@@ -20,7 +23,10 @@ export default function TicketList({
   onRequestStop,
   frozenAt,
   refreshSignal,
+  tickets,
+  externalLoading,
 }: Props) {
+  const controlado = tickets !== undefined;
   const [result, setResult] = useState<TicketsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +39,13 @@ export default function TicketList({
   const displayNow = frozenAt ?? now;
 
   useEffect(() => {
+    if (controlado) return;
     window.api
       .listTickets()
       .then(setResult)
       .catch((err) => setError(err instanceof Error ? err.message : 'No se pudieron cargar'))
       .finally(() => setLoading(false));
-  }, [refreshSignal]);
+  }, [refreshSignal, controlado]);
 
   const stages = useMemo(() => {
     const map = new Map<number, string>();
@@ -49,6 +56,7 @@ export default function TicketList({
   }, [result]);
 
   const visible = useMemo(() => {
+    if (controlado) return tickets ?? [];
     const query = search.trim().toLowerCase();
     return (result?.tickets ?? []).filter((t) => {
       if (stageFilter !== 'all') {
@@ -62,7 +70,7 @@ export default function TicketList({
         .toLowerCase()
         .includes(query);
     });
-  }, [result, search, stageFilter]);
+  }, [result, search, stageFilter, controlado, tickets]);
 
   async function handleStart(ticket: OdooTicket) {
     setError(null);
@@ -77,7 +85,7 @@ export default function TicketList({
     }
   }
 
-  if (loading) {
+  if (controlado ? externalLoading : loading) {
     return (
       <div>
         {[0, 1, 2].map((i) => (
@@ -111,6 +119,7 @@ export default function TicketList({
         </div>
       )}
 
+      {!controlado && (
       <div className="task-filters">
         <div className="search-field">
           <IconSearch size={15} />
@@ -136,6 +145,7 @@ export default function TicketList({
           ))}
         </select>
       </div>
+      )}
 
       {visible.length === 0 ? (
         <div className="empty-state">

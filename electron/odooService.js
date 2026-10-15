@@ -1028,11 +1028,97 @@ async function assignTimesheetTask(client, lineId, taskId) {
   return { id: lineId, taskId };
 }
 
+const BROWSE_LIMIT = 100;
+
+// Nombres de los asignados, para saber de quién es cada tarea al navegar por todas.
+async function resolveUserNames(client, ids) {
+  if (ids.length === 0) return {};
+  try {
+    const users = await client.execute_kw('res.users', 'read', [ids, ['name']]);
+    return Object.fromEntries(users.map((u) => [u.id, u.name]));
+  } catch {
+    return {};
+  }
+}
+
+// Todas las tareas abiertas, sin filtrar por responsable: sirve para imputar tiempo en algo
+// en lo que se ayuda sin estar asignado. La búsqueda va contra Odoo, no sobre la página cargada.
+async function searchAllTasks(client, { query = '', limit = BROWSE_LIMIT } = {}) {
+  const texto = String(query || '').trim();
+  const filtroTexto = texto
+    ? ['|', ['name', 'ilike', texto], ['project_id.name', 'ilike', texto]]
+    : [];
+
+  const variantes = [
+    { extra: [['state', 'not in', CLOSED_TASK_STATES]], fields: [...TASK_FIELDS_PLANNED, 'user_ids'] },
+    { extra: [['stage_id.fold', '=', false]], fields: [...TASK_FIELDS, 'user_ids'] },
+    { extra: [], fields: TASK_FIELDS_BASIC },
+  ];
+
+  let lastError;
+  for (const { extra, fields } of variantes) {
+    try {
+      const tasks = await client.execute_kw(
+        'project.task',
+        'search_read',
+        [[...filtroTexto, ['active', '=', true], ...extra], fields],
+        { order: 'write_date desc', limit },
+      );
+
+      const ids = [...new Set(tasks.flatMap((t) => (Array.isArray(t.user_ids) ? t.user_ids : [])))];
+      const nombres = await resolveUserNames(client, ids);
+      return tasks.map((task) => ({
+        ...task,
+        assignee_names: (Array.isArray(task.user_ids) ? task.user_ids : [])
+          .map((id) => nombres[id])
+          .filter(Boolean),
+      }));
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+async function searchAllTickets(client, { query = '', limit = BROWSE_LIMIT } = {}) {
+  const texto = String(query || '').trim();
+  const filtroTexto = texto
+    ? ['|', '|', ['name', 'ilike', texto], ['ticket_ref', 'ilike', texto], ['partner_id.name', 'ilike', texto]]
+    : [];
+
+  const abiertos = [['stage_id.fold', '=', false], ['close_date', '=', false]];
+  const intentos = [
+    { domain: [...filtroTexto, ...abiertos], fields: [...TICKET_FIELDS_FULL, 'user_id'] },
+    { domain: [...filtroTexto, ['stage_id.fold', '=', false]], fields: [...TICKET_FIELDS_FULL, 'user_id'] },
+    { domain: filtroTexto, fields: TICKET_FIELDS_FULL },
+    { domain: filtroTexto, fields: TICKET_FIELDS_BASIC },
+  ];
+
+  let lastError;
+  for (const intento of intentos) {
+    try {
+      const tickets = await client.execute_kw(
+        'helpdesk.ticket',
+        'search_read',
+        [intento.domain, intento.fields],
+        { order: 'create_date desc', limit },
+      );
+      return { available: true, tickets };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  return { available: false, tickets: [], reason: lastError ? lastError.message : '' };
+}
+
 module.exports = {
   canManageTeam,
   fetchTeamProductivity,
   fetchTeamSchedule,
   fetchAssignedTasks,
+  searchAllTasks,
+  searchAllTickets,
   fetchAssignedTickets,
   fetchActivities,
   completeActivity,

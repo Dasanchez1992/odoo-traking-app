@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
+import AllTasksPanel from '../components/AllTasksPanel';
+import AllTicketsPanel from '../components/AllTicketsPanel';
 import UnassignedTimeModal from '../components/UnassignedTimeModal';
 import ReleaseNotesModal from '../components/ReleaseNotesModal';
 import TaskFilters from '../components/TaskFilters';
@@ -64,7 +66,14 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [stopRequestedAt, setStopRequestedAt] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [tab, setTab] = useState<
-    'tasks' | 'tickets' | 'activities' | 'productivity' | 'team' | 'gantt'
+    | 'tasks'
+    | 'all-tasks'
+    | 'tickets'
+    | 'all-tickets'
+    | 'activities'
+    | 'productivity'
+    | 'team'
+    | 'gantt'
   >('tasks');
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
   const [canManageTeam, setCanManageTeam] = useState(false);
@@ -306,12 +315,28 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               Mis tareas
             </button>
             <button
+              className={`tab ${tab === 'all-tasks' ? 'is-active' : ''}`}
+              onClick={() => setTab('all-tasks')}
+              role="tab"
+              aria-selected={tab === 'all-tasks'}
+            >
+              Todas las tareas
+            </button>
+            <button
               className={`tab ${tab === 'tickets' ? 'is-active' : ''}`}
               onClick={() => setTab('tickets')}
               role="tab"
               aria-selected={tab === 'tickets'}
             >
               Tickets
+            </button>
+            <button
+              className={`tab ${tab === 'all-tickets' ? 'is-active' : ''}`}
+              onClick={() => setTab('all-tickets')}
+              role="tab"
+              aria-selected={tab === 'all-tickets'}
+            >
+              Todos los tickets
             </button>
             <button
               className={`tab ${tab === 'activities' ? 'is-active' : ''}`}
@@ -374,6 +399,29 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                 frozenAt={stopRequestedAt}
               />
             </section>
+          )}
+
+          {tab === 'all-tasks' && (
+            <AllTasksPanel
+              timers={timers}
+              onTimersChange={setTimers}
+              onTimerStarted={handleTimerStarted}
+              onRequestStop={() => setStopRequestedAt(Date.now())}
+              onTaskChanged={refreshTasks}
+              frozenAt={stopRequestedAt}
+              refreshSignal={refreshSignal}
+            />
+          )}
+
+          {tab === 'all-tickets' && (
+            <AllTicketsPanel
+              timers={timers}
+              onTimersChange={setTimers}
+              onTimerStarted={handleTimerStarted}
+              onRequestStop={() => setStopRequestedAt(Date.now())}
+              frozenAt={stopRequestedAt}
+              refreshSignal={refreshSignal}
+            />
           )}
 
           {tab === 'activities' && (

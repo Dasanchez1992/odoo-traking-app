@@ -15,6 +15,8 @@ interface Props {
   frozenAt: number | null;
   loading: boolean;
   filtered: boolean;
+  /** En «Todas las tareas» importa de quién es cada una. */
+  showAssignee?: boolean;
 }
 
 export default function TaskList({
@@ -27,6 +29,7 @@ export default function TaskList({
   frozenAt,
   loading,
   filtered,
+  showAssignee = false,
 }: Props) {
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
   const [detailTask, setDetailTask] = useState<OdooTask | null>(null);
@@ -119,11 +122,23 @@ export default function TaskList({
               </button>
             </div>
 
-            <div className="task-project" title={task.project_id ? task.project_id[1] : ''}>
-              {task.project_id ? (
-                task.project_id[1]
-              ) : (
-                <span className="task-no-project">Sin proyecto</span>
+            <div
+              className={`task-project ${showAssignee ? 'has-assignee' : ''}`}
+              title={task.project_id ? task.project_id[1] : ''}
+            >
+              <span className="task-project-name">
+                {task.project_id ? (
+                  task.project_id[1]
+                ) : (
+                  <span className="task-no-project">Sin proyecto</span>
+                )}
+              </span>
+              {showAssignee && (
+                <span className="task-assignee" title={(task.assignee_names ?? []).join(', ')}>
+                  {task.assignee_names && task.assignee_names.length > 0
+                    ? task.assignee_names.join(', ')
+                    : 'Sin responsable'}
+                </span>
               )}
             </div>
 

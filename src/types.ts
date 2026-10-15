@@ -21,6 +21,8 @@ export interface OdooTask {
   partner_id?: [number, string] | false;
   planned_date_begin?: string | false;
   allocated_hours?: number;
+  /** Solo en «Todas las tareas»: de quién es la tarea. */
+  assignee_names?: string[];
   effective_hours?: number;
   remaining_hours?: number;
 }
@@ -34,6 +36,7 @@ export interface OdooTicket {
   stage_id: [number, string] | false;
   priority: string;
   create_date: string;
+  user_id?: [number, string] | false;
   project_id?: [number, string] | false;
   sla_deadline?: string | false;
   total_hours_spent?: number;
@@ -246,6 +249,8 @@ export interface ElectronApi {
 
   listTasks: () => Promise<OdooTask[]>;
   listOverdueTasks: () => Promise<OdooTask[]>;
+  searchAllTasks: (query: string) => Promise<OdooTask[]>;
+  searchAllTickets: (query: string) => Promise<TicketsResult>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
 

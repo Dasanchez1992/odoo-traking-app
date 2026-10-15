@@ -3570,3 +3570,33 @@ textarea:focus {
   border-radius: 50%;
   background: var(--brand-500);
 }
+
+/* En «Todas las tareas» la columna de proyecto lleva debajo de quién es la tarea. */
+.task-project.has-assignee {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.task-project-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-assignee {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cabecera de las vistas de búsqueda global. */
+.browse-hint {
+  padding: 10px 18px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  border-bottom: 1px solid var(--border);
+}

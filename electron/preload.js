@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('api', {
 
   listTasks: () => ipcRenderer.invoke('tasks:list'),
   listOverdueTasks: () => ipcRenderer.invoke('tasks:overdue'),
+  searchAllTasks: (query) => ipcRenderer.invoke('tasks:search-all', query),
+  searchAllTickets: (query) => ipcRenderer.invoke('tickets:search-all', query),
   openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
   getProductivity: () => ipcRenderer.invoke('stats:productivity'),
 
