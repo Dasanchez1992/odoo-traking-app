@@ -49,6 +49,18 @@ Los dos primeros usan `claude-haiku-5-5` y los dos últimos `claude-sonnet-5-5`.
 le envían los datos del registro concreto: nombre de tarea o ticket, proyecto, duración y las
 descripciones anteriores de ese mismo registro.
 
+### Reuniones
+
+Pestaña propia. Graba micrófono y audio del sistema mezclados (en Windows por *loopback*, para
+capturar también a los demás participantes) y escribe el `.webm` a disco por trozos mientras dura
+la reunión, de modo que un cierre inesperado no se lleva la sesión. El audio y su ficha viven en
+`grabaciones/` dentro de la carpeta de datos de la app: nunca salen del equipo.
+
+La transcripción corre en local con Whisper vía `@huggingface/transformers`: la ventana decodifica
+el audio y lo remuestrea a 16 kHz mono, y el proceso principal ejecuta el modelo, que se descarga
+una sola vez a `modelos-whisper/`. El modelo se elige en Configuración (`tiny` 42 MB, `base` 77 MB
+por defecto, `small` 241 MB). Del texto resultante sale el resumen, ese sí con la API de Claude.
+
 ### El nombre anterior
 
 La aplicación se llamaba **Elideysi** hasta la versión 1.7.0. El `appId`
