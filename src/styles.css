@@ -3642,3 +3642,22 @@ textarea:focus {
   color: var(--text-muted);
   cursor: pointer;
 }
+
+/* Sugerencia de la IA bajo el registro pendiente. */
+.free-time-suggestion {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--brand-600);
+}
+
+.free-time-suggestion svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.free-time-suggestion.is-empty {
+  color: var(--text-subtle);
+}

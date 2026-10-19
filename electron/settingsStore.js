@@ -11,6 +11,8 @@ const DEFAULTS = {
   autoAttendance: false,
   autoCheckIn: '08:30',
   autoCheckOut: '17:30',
+  // Asistencia de IA (redacción, sugerencias y resúmenes).
+  aiEnabled: true,
   // Aviso de novedades tras una actualización automática.
   showReleaseNotes: true,
   // Última versión cuyas novedades ya vio el usuario; no es una preferencia, es estado.

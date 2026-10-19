@@ -1140,6 +1140,156 @@ async function searchAllTickets(client, { query = '', limit = BROWSE_LIMIT } = {
   return { available: false, tickets: [], reason: lastError ? lastError.message : '' };
 }
 
+// Datos que necesitan las funciones de IA -----------------------------------------------------
+
+function plainText(html, max = 400) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+// Descripciones anteriores del mismo registro: dan el estilo y evitan repetir lo ya dicho.
+async function fetchRecentTimesheetNames(client, kind, recordId, limit = 5) {
+  const campo = kind === 'ticket' ? 'helpdesk_ticket_id' : 'task_id';
+  try {
+    const lines = await client.execute_kw(
+      'account.analytic.line',
+      'search_read',
+      [[[campo, '=', recordId]], ['name']],
+      { order: 'date desc, id desc', limit },
+    );
+    return lines.map((l) => l.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+// Hojas de horas propias de la semana, agrupadas por proyecto, para el resumen semanal.
+async function fetchWeekTimesheets(client) {
+  const { ecuadorDateKey } = require('./dateUtil');
+  const today = ecuadorDateKey(new Date());
+  const weekStart = mondayOf(today);
+  const employeeId = await getEmployeeId(client);
+
+  const lines = await client.execute_kw(
+    'account.analytic.line',
+    'search_read',
+    [
+      [
+        ['employee_id', '=', employeeId],
+        ['date', '>=', weekStart],
+        ['date', '<=', today],
+      ],
+      ['name', 'date', 'unit_amount', 'project_id'],
+    ],
+    { order: 'date asc, id asc', limit: 300 },
+  );
+
+  const porProyecto = new Map();
+  lines.forEach((line) => {
+    const id = Array.isArray(line.project_id) ? line.project_id[0] : 0;
+    const nombre = Array.isArray(line.project_id) ? line.project_id[1] : 'Sin proyecto';
+    if (!porProyecto.has(id)) porProyecto.set(id, { name: nombre, hours: 0, entries: [] });
+    const grupo = porProyecto.get(id);
+    grupo.hours += line.unit_amount || 0;
+    grupo.entries.push({
+      date: line.date,
+      hours: Math.round((line.unit_amount || 0) * 100) / 100,
+      name: line.name || '',
+    });
+  });
+
+  return {
+    since: weekStart,
+    until: today,
+    byProject: [...porProyecto.values()]
+      .map((g) => ({ ...g, hours: Math.round(g.hours * 100) / 100 }))
+      .sort((a, b) => b.hours - a.hours),
+  };
+}
+
+// Ticket y sus parecidos anteriores, con cómo se resolvieron.
+async function fetchTicketContext(client, ticketId) {
+  const [ticket] = await client.execute_kw('helpdesk.ticket', 'read', [
+    [ticketId],
+    ['name', 'ticket_ref', 'partner_id', 'team_id', 'description', 'stage_id'],
+  ]);
+  if (!ticket) throw new Error('No se encontró el ticket');
+
+  // Las palabras cortas no distinguen nada; con las tres más largas basta para buscar parecidos.
+  const palabras = String(ticket.name || '')
+    .split(/[^\wáéíóúñÁÉÍÓÚÑ]+/)
+    .filter((p) => p.length > 4)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 3);
+
+  let similar = [];
+  if (palabras.length) {
+    const orTexto = [];
+    palabras.forEach(() => orTexto.push('|'));
+    orTexto.pop();
+    const dominio = [...orTexto, ...palabras.map((p) => ['name', 'ilike', p])];
+    try {
+      similar = await client.execute_kw(
+        'helpdesk.ticket',
+        'search_read',
+        [[...dominio, ['id', '!=', ticketId]], ['name', 'ticket_ref', 'stage_id']],
+        { order: 'create_date desc', limit: 5 },
+      );
+    } catch {
+      similar = [];
+    }
+  }
+
+  if (similar.length) {
+    try {
+      const mensajes = await client.execute_kw(
+        'mail.message',
+        'search_read',
+        [
+          [
+            ['model', '=', 'helpdesk.ticket'],
+            ['res_id', 'in', similar.map((t) => t.id)],
+            ['message_type', 'in', ['comment', 'email']],
+          ],
+          ['res_id', 'body'],
+        ],
+        { order: 'date desc', limit: 40 },
+      );
+      const porTicket = {};
+      mensajes.forEach((m) => {
+        const texto = plainText(m.body);
+        if (texto && !porTicket[m.res_id]) porTicket[m.res_id] = texto;
+      });
+      similar = similar.map((t) => ({ ...t, resolution: porTicket[t.id] || '' }));
+    } catch {
+      // Sin acceso al historial se sigue adelante con los nombres.
+    }
+  }
+
+  return {
+    ticket: {
+      id: ticket.id,
+      ref: ticket.ticket_ref || '',
+      name: ticket.name,
+      partner: Array.isArray(ticket.partner_id) ? ticket.partner_id[1] : '',
+      team: Array.isArray(ticket.team_id) ? ticket.team_id[1] : '',
+      description: plainText(ticket.description, 1500),
+    },
+    similar: similar.map((t) => ({
+      id: t.id,
+      name: `${t.ticket_ref ? `${t.ticket_ref} · ` : ''}${t.name}`,
+      resolution: t.resolution || '',
+    })),
+  };
+}
+
 module.exports = {
   canManageTeam,
   fetchTeamProductivity,
@@ -1161,6 +1311,9 @@ module.exports = {
   logProjectTimesheet,
   fetchProjects,
   fetchProjectTasks,
+  fetchRecentTimesheetNames,
+  fetchWeekTimesheets,
+  fetchTicketContext,
   fetchUnassignedTimesheets,
   assignTimesheetTask,
   deleteTimesheet,

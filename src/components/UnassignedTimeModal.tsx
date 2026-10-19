@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { OdooProject, ProjectTask, UnassignedTimesheet } from '../types';
+import { OdooProject, ProjectTask, TaskSuggestion, UnassignedTimesheet } from '../types';
 import { formatOdooDateShort } from '../lib/odooDate';
-import { IconAlert, IconCheck, IconClose, IconPlay, IconTrash } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconPlay, IconSparkle, IconTrash } from './Icons';
 import SearchSelect from './SearchSelect';
 
 interface Props {
@@ -27,6 +27,9 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
   const [projectId, setProjectId] = useState<number | null>(null);
   const [openCombo, setOpenCombo] = useState<string | null>(null);
   const [confirmLine, setConfirmLine] = useState<number | null>(null);
+  const [aiOk, setAiOk] = useState(false);
+  const [suggesting, setSuggesting] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<Record<number, TaskSuggestion>>({});
   const [loading, setLoading] = useState(true);
   const [busyLine, setBusyLine] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
@@ -65,6 +68,10 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
 
   useEffect(() => {
     load();
+    window.api
+      .getAiStatus()
+      .then((estado) => setAiOk(estado.available))
+      .catch(() => setAiOk(false));
   }, []);
 
   useEffect(() => {
@@ -111,6 +118,30 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
       setError(err instanceof Error ? err.message : 'No se pudo iniciar el cronómetro');
     } finally {
       setStarting(false);
+    }
+  }
+
+  async function handleSuggest(line: UnassignedTimesheet) {
+    if (!line.project_id) return;
+    setSuggesting(line.id);
+    setError(null);
+    try {
+      const sugerencia = await window.api.suggestTaskForLine({
+        lineId: line.id,
+        description: line.name,
+        projectId: line.project_id[0],
+        projectName: line.project_id[1],
+        date: line.date,
+      });
+      setSuggestions((actual) => ({ ...actual, [line.id]: sugerencia }));
+      // La sugerencia se deja elegida, pero sigue haciendo falta confirmar con «Asignar».
+      if (sugerencia.taskId) {
+        setSelection((actual) => ({ ...actual, [line.id]: sugerencia.taskId as number }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo sugerir la tarea');
+    } finally {
+      setSuggesting(null);
     }
   }
 
@@ -222,6 +253,21 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
                         {line.name}
                       </p>
 
+                      {suggestions[line.id] && (
+                        <p
+                          className={`free-time-suggestion ${
+                            suggestions[line.id].taskId ? '' : 'is-empty'
+                          }`}
+                        >
+                          <IconSparkle size={12} />
+                          <span>
+                            {suggestions[line.id].taskId
+                              ? `Sugerencia (${suggestions[line.id].confidence}): ${suggestions[line.id].reason}`
+                              : `Sin sugerencia clara: ${suggestions[line.id].reason}`}
+                          </span>
+                        </p>
+                      )}
+
                       {confirmLine === line.id ? (
                         <div className="free-time-confirm">
                           <span>¿Eliminar este registro de {formatHours(line.unit_amount)}?</span>
@@ -263,6 +309,17 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
                             <IconCheck size={13} />
                             {busyLine === line.id ? 'Asignando...' : 'Asignar'}
                           </button>
+                          {aiOk && tareas.length > 0 && (
+                            <button
+                              className="btn-ghost btn-icon"
+                              onClick={() => handleSuggest(line)}
+                              disabled={suggesting === line.id}
+                              title="Sugerir a qué tarea pertenece este tiempo"
+                              aria-label="Sugerir tarea"
+                            >
+                              <IconSparkle size={14} />
+                            </button>
+                          )}
                           <button
                             className="btn-ghost btn-icon free-time-delete"
                             onClick={() => setConfirmLine(line.id)}

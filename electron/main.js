@@ -22,6 +22,7 @@ const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
+const ai = require('./aiService');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -492,6 +493,7 @@ ipcMain.handle('auth:restore', async () => {
 
 ipcMain.handle('auth:logout', async () => {
   client = null;
+  ai.resetAi();
   timers = [];
   hideMiniWindow();
   stopOverduePolling();
@@ -584,6 +586,75 @@ ipcMain.handle('updates:open-release', async () => {
   if (!lastReleaseUrl) return false;
   await shell.openExternal(lastReleaseUrl);
   return true;
+});
+
+// ---------------------------------------------------------------------------------------
+// Asistencia de IA. La clave sale de un parámetro de Odoo, así que cada quien usa la suya
+// según lo que su usuario pueda leer, y nada se reparte con el instalador.
+// ---------------------------------------------------------------------------------------
+function aiHabilitada() {
+  return settingsStore.read().aiEnabled !== false;
+}
+
+function requireAi() {
+  if (!aiHabilitada()) throw new Error('La asistencia de IA está desactivada en la configuración.');
+  return requireClient();
+}
+
+ipcMain.handle('ai:status', async () => {
+  if (!aiHabilitada()) return { available: false, reason: 'desactivada' };
+  if (!client) return { available: false, reason: 'sin sesión' };
+  try {
+    await ai.getApiKey(client);
+    return { available: true };
+  } catch (err) {
+    return { available: false, reason: err.message };
+  }
+});
+
+ipcMain.handle('ai:draft-description', async (_event, payload = {}) => {
+  const c = requireAi();
+  const { kind = 'task', recordId, taskName, projectName, stageName, minutes, notes } = payload;
+  const previous = Number.isInteger(recordId)
+    ? await odooService.fetchRecentTimesheetNames(c, kind, recordId)
+    : [];
+  return ai.draftTimesheetDescription(c, {
+    taskName,
+    projectName,
+    stageName,
+    minutes,
+    notes,
+    previous,
+  });
+});
+
+ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectId, projectName, date } = {}) => {
+  const c = requireAi();
+  const tasks = await odooService.fetchProjectTasks(c, projectId);
+  const sugerencia = await ai.suggestTaskForTimesheet(c, {
+    description,
+    projectName,
+    date,
+    tasks: tasks.map((t) => ({ id: t.id, name: t.name })),
+  });
+  return { lineId, ...sugerencia };
+});
+
+ipcMain.handle('ai:weekly-summary', async () => {
+  const c = requireAi();
+  const datos = await odooService.fetchWeekTimesheets(c);
+  if (datos.byProject.length === 0) {
+    throw new Error('Esta semana todavía no tienes horas registradas que resumir.');
+  }
+  const texto = await ai.weeklySummary(c, datos);
+  return { ...datos, text: texto };
+});
+
+ipcMain.handle('ai:triage-ticket', async (_event, ticketId) => {
+  const c = requireAi();
+  const contexto = await odooService.fetchTicketContext(c, ticketId);
+  const triaje = await ai.triageTicket(c, contexto);
+  return { ...triaje, similar: contexto.similar };
 });
 
 ipcMain.handle('timesheets:delete', async (_event, lineId) => {

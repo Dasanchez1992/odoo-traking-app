@@ -243,3 +243,12 @@ export function IconTrash({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconSparkle({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 3.5l1.7 4.6 4.6 1.7-4.6 1.7L12 16.1l-1.7-4.6L5.7 9.8l4.6-1.7z" />
+      <path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
+    </svg>
+  );
+}

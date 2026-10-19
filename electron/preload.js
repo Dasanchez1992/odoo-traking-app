@@ -12,6 +12,12 @@ contextBridge.exposeInMainWorld('api', {
   openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
   getProductivity: () => ipcRenderer.invoke('stats:productivity'),
 
+  getAiStatus: () => ipcRenderer.invoke('ai:status'),
+  draftDescription: (payload) => ipcRenderer.invoke('ai:draft-description', payload),
+  suggestTaskForLine: (payload) => ipcRenderer.invoke('ai:suggest-task', payload),
+  getWeeklySummary: () => ipcRenderer.invoke('ai:weekly-summary'),
+  triageTicket: (ticketId) => ipcRenderer.invoke('ai:triage-ticket', ticketId),
+
   getProjects: () => ipcRenderer.invoke('projects:list'),
   getProjectTasks: (projectId) => ipcRenderer.invoke('projects:tasks', projectId),
   getUnassignedTimesheets: () => ipcRenderer.invoke('timesheets:unassigned'),

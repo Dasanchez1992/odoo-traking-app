@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { MentionableUser, TimerState } from '../types';
 import { formatElapsed, timerElapsedMs } from '../lib/format';
-import { IconAlert, IconCheck, IconClose, IconStop } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconSparkle, IconStop } from './Icons';
 import MentionTextarea, { Mention } from './MentionTextarea';
 
 const MIN_BILLABLE_MINUTES = 5;
@@ -38,6 +38,10 @@ export default function StopTimerDialog({
   const [timeSaved, setTimeSaved] = useState(false);
   const [noteFailed, setNoteFailed] = useState(false);
 
+  // Redacción asistida: solo aparece si Odoo tiene la clave y el usuario puede leerla.
+  const [aiOk, setAiOk] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+
   const medidoMs = timerElapsedMs(timer, stoppedAt);
   // El cronómetro es una propuesta: el usuario ajusta la duración antes de registrarla.
   const [horas, setHoras] = useState(() => Math.floor(medidoMs / 3600000));
@@ -47,6 +51,13 @@ export default function StopTimerDialog({
   const elapsedMinutes = elapsedMs / 60000;
   const appliesMinimum = elapsedMinutes > 0 && elapsedMinutes < MIN_BILLABLE_MINUTES;
   const ajustado = Math.abs(elapsedMs - medidoMs) >= 60000;
+
+  useEffect(() => {
+    window.api
+      .getAiStatus()
+      .then((estado) => setAiOk(estado.available))
+      .catch(() => setAiOk(false));
+  }, []);
 
   useEffect(() => {
     if (!withNote || users.length > 0) return;
@@ -60,6 +71,28 @@ export default function StopTimerDialog({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onCancel, saving]);
+
+  async function handleDraft() {
+    setDrafting(true);
+    setError(null);
+    try {
+      const texto = await window.api.draftDescription({
+        kind: timer.kind === 'ticket' ? 'ticket' : 'task',
+        recordId: timer.taskId,
+        taskName: timer.taskName,
+        projectName: timer.projectName ?? null,
+        stageName: timer.context?.stageName ?? null,
+        minutes: Math.round(elapsedMs / 60000),
+        // Lo que ya escribió el usuario manda: la IA lo completa, no lo sustituye.
+        notes: description.trim() || undefined,
+      });
+      setDescription(texto);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo redactar la descripción');
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function handleDiscard() {
     setSaving(true);
@@ -203,9 +236,27 @@ export default function StopTimerDialog({
           )}
 
           <div className="field" style={{ marginTop: 16 }}>
-            <label className="field-label" htmlFor="timesheet-description">
-              Descripción del trabajo <span className="field-required">*</span>
-            </label>
+            <div className="task-detail-message-head">
+              <label className="field-label" htmlFor="timesheet-description">
+                Descripción del trabajo <span className="field-required">*</span>
+              </label>
+              {aiOk && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={handleDraft}
+                  disabled={saving || drafting}
+                  title={
+                    description.trim()
+                      ? 'Reescribir a partir de lo que ya escribiste'
+                      : 'Proponer una descripción a partir de la tarea'
+                  }
+                >
+                  <IconSparkle size={13} />
+                  {drafting ? 'Redactando...' : description.trim() ? 'Mejorar' : 'Redactar'}
+                </button>
+              )}
+            </div>
             <textarea
               id="timesheet-description"
               rows={3}

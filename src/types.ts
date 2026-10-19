@@ -233,11 +233,40 @@ export interface TeamSchedule {
   tasks: ScheduleTask[];
 }
 
+export interface AiStatus {
+  available: boolean;
+  reason?: string;
+}
+
+export interface TaskSuggestion {
+  lineId: number;
+  taskId: number | null;
+  confidence: 'alta' | 'media' | 'baja';
+  reason: string;
+}
+
+export interface WeeklySummary {
+  since: string;
+  until: string;
+  byProject: { name: string; hours: number }[];
+  text: string;
+}
+
+export interface TicketTriage {
+  summary: string;
+  priority: string;
+  priorityReason: string;
+  firstSteps: string[];
+  relatedIds: number[];
+  similar: { id: number; name: string; resolution: string }[];
+}
+
 export interface AppSettings {
   startAtLogin: boolean;
   remindersEnabled: boolean;
   floatingWidget: boolean;
   showReleaseNotes: boolean;
+  aiEnabled: boolean;
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */
   autoCheckIn: string;
@@ -256,6 +285,26 @@ export interface ElectronApi {
   searchAllTickets: (query: string) => Promise<TicketsResult>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
+
+  getAiStatus: () => Promise<AiStatus>;
+  draftDescription: (payload: {
+    kind?: RecordKind;
+    recordId?: number;
+    taskName: string;
+    projectName?: string | null;
+    stageName?: string | null;
+    minutes: number;
+    notes?: string;
+  }) => Promise<string>;
+  suggestTaskForLine: (payload: {
+    lineId: number;
+    description: string;
+    projectId: number;
+    projectName: string;
+    date: string;
+  }) => Promise<TaskSuggestion>;
+  getWeeklySummary: () => Promise<WeeklySummary>;
+  triageTicket: (ticketId: number) => Promise<TicketTriage>;
 
   getProjects: () => Promise<OdooProject[]>;
   getProjectTasks: (projectId: number) => Promise<ProjectTask[]>;
