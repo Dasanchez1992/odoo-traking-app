@@ -233,6 +233,17 @@ export interface TeamSchedule {
   tasks: ScheduleTask[];
 }
 
+export interface Recording {
+  id: string;
+  title: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number;
+  bytes: number;
+  transcript: string;
+  summary: string;
+}
+
 export interface AiStatus {
   available: boolean;
   configured: boolean;
@@ -288,6 +299,19 @@ export interface ElectronApi {
   searchAllTickets: (query: string) => Promise<TicketsResult>;
   openTaskInOdoo: (taskId: number) => Promise<string>;
   getProductivity: () => Promise<ProductivityData>;
+
+  startRecording: (title: string) => Promise<Recording>;
+  pushRecordingChunk: (id: string, chunk: ArrayBuffer) => Promise<boolean>;
+  finishRecording: (id: string, durationMs: number) => Promise<Recording>;
+  listRecordings: () => Promise<Recording[]>;
+  updateRecording: (
+    id: string,
+    cambios: { title?: string; transcript?: string; summary?: string },
+  ) => Promise<Recording>;
+  deleteRecording: (id: string) => Promise<{ id: string }>;
+  getRecordingAudio: (id: string) => Promise<Uint8Array>;
+  openRecordingsFolder: () => Promise<boolean>;
+  summarizeMeeting: (id: string) => Promise<Recording>;
 
   getAiStatus: () => Promise<AiStatus>;
   saveAiKey: (key: string) => Promise<{ configured: boolean; encrypted: boolean; key: string }>;

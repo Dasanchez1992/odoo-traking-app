@@ -12,6 +12,16 @@ contextBridge.exposeInMainWorld('api', {
   openTaskInOdoo: (taskId) => ipcRenderer.invoke('tasks:open', taskId),
   getProductivity: () => ipcRenderer.invoke('stats:productivity'),
 
+  startRecording: (title) => ipcRenderer.invoke('recordings:start', title),
+  pushRecordingChunk: (id, chunk) => ipcRenderer.invoke('recordings:chunk', id, chunk),
+  finishRecording: (id, durationMs) => ipcRenderer.invoke('recordings:finish', id, durationMs),
+  listRecordings: () => ipcRenderer.invoke('recordings:list'),
+  updateRecording: (id, cambios) => ipcRenderer.invoke('recordings:update', id, cambios),
+  deleteRecording: (id) => ipcRenderer.invoke('recordings:delete', id),
+  getRecordingAudio: (id) => ipcRenderer.invoke('recordings:audio', id),
+  openRecordingsFolder: () => ipcRenderer.invoke('recordings:open-folder'),
+  summarizeMeeting: (id) => ipcRenderer.invoke('ai:summarize-meeting', id),
+
   getAiStatus: () => ipcRenderer.invoke('ai:status'),
   saveAiKey: (key) => ipcRenderer.invoke('ai:save-key', key),
   clearAiKey: () => ipcRenderer.invoke('ai:clear-key'),

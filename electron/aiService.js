@@ -235,6 +235,28 @@ async function triageTicket({ ticket, similar }) {
   });
 }
 
+// 5. Resumen de una reunión a partir de su texto ----------------------------------------------
+
+async function summarizeMeeting({ title, date, durationMs, transcript }) {
+  const minutos = Math.round((durationMs || 0) / 60000);
+
+  return ask({
+    model: MODELO_LARGO,
+    maxTokens: 3000,
+    effort: 'medium',
+    system:
+      'Resumes reuniones de trabajo de una consultora de Odoo. Devuelves, en español neutro y ' +
+      'sin adornos: «Resumen» con dos o tres frases; «Temas tratados» con viñetas; «Decisiones» ' +
+      'con lo que quedó acordado; y «Pendientes» con una viñeta por tarea, indicando el ' +
+      'responsable y la fecha solo si se dijeron en la reunión. Si una sección no tiene ' +
+      'contenido, la omites. No inventes acuerdos, responsables ni fechas: lo que no esté en el ' +
+      'texto, no existe. Si el texto está incompleto o es confuso, dilo al final en una línea.',
+    prompt:
+      `Reunión: ${title}\nFecha: ${date}\nDuración: ${minutos} minutos\n\n` +
+      `Texto de la reunión:\n${transcript}\n\nEscribe el resumen.`,
+  });
+}
+
 module.exports = {
   resetAi,
   getApiKey,
@@ -243,4 +265,5 @@ module.exports = {
   suggestTaskForTimesheet,
   weeklySummary,
   triageTicket,
+  summarizeMeeting,
 };

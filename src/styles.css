@@ -3843,3 +3843,124 @@ textarea:focus {
 .settings-card .setting-row:last-of-type {
   border-bottom: none;
 }
+
+/* ============================================================
+   Reuniones grabadas
+   ============================================================ */
+.meeting-recorder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.meeting-recorder input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.dot.is-rec {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger-solid);
+}
+
+.meeting-live {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.meeting-live strong {
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.meeting-live span {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+.meeting-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.meeting-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.meeting-item:last-child {
+  border-bottom: none;
+}
+
+.meeting-item.is-open {
+  background: var(--surface-sunken);
+}
+
+.meeting-item.is-recording .meeting-title::after {
+  content: ' · en curso';
+  color: var(--danger-fg);
+  font-weight: 600;
+}
+
+.meeting-row {
+  display: flex;
+  flex-direction: column;
+  /* El estilo global de los botones centra su contenido; aquí el texto va a la izquierda. */
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 0;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.meeting-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-meta {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+}
+
+.meeting-detail {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0 6px;
+}
+
+.meeting-detail audio {
+  width: 100%;
+  height: 36px;
+}
+
+.meeting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -3,6 +3,7 @@ import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
 import AllTasksPanel from '../components/AllTasksPanel';
 import AllTicketsPanel from '../components/AllTicketsPanel';
+import MeetingsPanel from '../components/MeetingsPanel';
 import UnassignedTimeModal from '../components/UnassignedTimeModal';
 import ReleaseNotesModal from '../components/ReleaseNotesModal';
 import TaskFilters from '../components/TaskFilters';
@@ -71,6 +72,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     | 'tickets'
     | 'all-tickets'
     | 'activities'
+    | 'meetings'
     | 'productivity'
     | 'team'
     | 'gantt'
@@ -351,6 +353,14 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               Actividades
             </button>
             <button
+              className={`tab ${tab === 'meetings' ? 'is-active' : ''}`}
+              onClick={() => setTab('meetings')}
+              role="tab"
+              aria-selected={tab === 'meetings'}
+            >
+              Reuniones
+            </button>
+            <button
               className={`tab ${tab === 'productivity' ? 'is-active' : ''}`}
               onClick={() => setTab('productivity')}
               role="tab"
@@ -438,6 +448,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               <ActivityList refreshSignal={refreshSignal} />
             </section>
           )}
+
+          {tab === 'meetings' && <MeetingsPanel />}
 
           {tab === 'productivity' && <ProductivityPanel key={refreshSignal} />}
 

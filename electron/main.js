@@ -1,6 +1,7 @@
 const {
   app,
   BrowserWindow,
+  desktopCapturer,
   ipcMain,
   Menu,
   Notification,
@@ -22,6 +23,7 @@ const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
+const recordings = require('./recordingStore');
 const ai = require('./aiService');
 const aiKeyStore = require('./aiKeyStore');
 const {
@@ -666,6 +668,57 @@ ipcMain.handle('ai:triage-ticket', async (_event, ticketId) => {
   return { ...triaje, similar: contexto.similar };
 });
 
+// ---------------------------------------------------------------------------------------
+// Grabación de reuniones. Todo se queda en el equipo: el audio en la carpeta de datos de la
+// app y la ficha en un índice junto a él.
+// ---------------------------------------------------------------------------------------
+ipcMain.handle('recordings:start', async (_event, title) => recordings.start({ title }));
+
+ipcMain.handle('recordings:chunk', async (_event, id, chunk) => recordings.appendChunk(id, chunk));
+
+ipcMain.handle('recordings:finish', async (_event, id, durationMs) =>
+  recordings.finish(id, { durationMs }),
+);
+
+ipcMain.handle('recordings:list', async () => recordings.list());
+
+ipcMain.handle('recordings:update', async (_event, id, cambios = {}) => {
+  // Solo estos campos se dejan tocar desde la ventana.
+  const { title, transcript, summary } = cambios;
+  const permitido = {};
+  if (typeof title === 'string') permitido.title = title.trim() || 'Reunión sin título';
+  if (typeof transcript === 'string') permitido.transcript = transcript;
+  if (typeof summary === 'string') permitido.summary = summary;
+  return recordings.update(id, permitido);
+});
+
+ipcMain.handle('recordings:delete', async (_event, id) => recordings.remove(id));
+
+ipcMain.handle('recordings:audio', async (_event, id) => recordings.readAudio(id));
+
+ipcMain.handle('recordings:open-folder', async () => {
+  await shell.openPath(recordings.carpeta());
+  return true;
+});
+
+ipcMain.handle('ai:summarize-meeting', async (_event, id) => {
+  requireAi();
+  const grabacion = recordings.get(id);
+  const texto = (grabacion.transcript || '').trim();
+  if (!texto) {
+    throw new Error(
+      'Primero hace falta el texto de la reunión: pega la transcripción o tus notas en el campo de abajo.',
+    );
+  }
+  const resumen = await ai.summarizeMeeting({
+    title: grabacion.title,
+    date: grabacion.startedAt,
+    durationMs: grabacion.durationMs,
+    transcript: texto,
+  });
+  return recordings.update(id, { summary: resumen });
+});
+
 ipcMain.handle('timesheets:set-project', async (_event, lineId, projectId) => {
   return odooService.updateTimesheetProject(requireClient(), lineId, projectId);
 });
@@ -969,9 +1022,25 @@ if (!gotLock) {
       app.setAppUserModelId(APP_ID);
     }
 
-    session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
-      callback(false);
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+      // Solo audio: el micrófono hace falta para grabar reuniones, la cámara nunca.
+      if (permission !== 'media') return callback(false);
+      const tipos = (details && details.mediaTypes) || [];
+      return callback(tipos.length === 0 || tipos.every((tipo) => tipo === 'audio'));
     });
+
+    // getDisplayMedia necesita una fuente: se toma la pantalla solo para poder pedir el audio
+    // del sistema («loopback»), que es lo que trae la voz de los demás participantes. El vídeo
+    // se descarta en la ventana nada más recibirlo.
+    session.defaultSession.setDisplayMediaRequestHandler(
+      (_request, callback) => {
+        desktopCapturer
+          .getSources({ types: ['screen'] })
+          .then((fuentes) => callback({ video: fuentes[0], audio: 'loopback' }))
+          .catch(() => callback({}));
+      },
+      { useSystemPicker: false },
+    );
 
     // El corrector se queda en español: la app y lo que se escribe en ella lo son.
     try {
