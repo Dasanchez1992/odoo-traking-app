@@ -122,6 +122,8 @@ function showWindow() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    // Título antes de que cargue la página; después manda el <title> del documento.
+    title: 'Elipsys Time - Gestión de tiempo y tareas',
     width: 1180,
     height: 760,
     // El diseño aguanta ventanas estrechas: así se puede trabajar al lado de Odoo.
