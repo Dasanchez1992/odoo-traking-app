@@ -33,7 +33,7 @@ async function capturarSistema(): Promise<MediaStream | null> {
 }
 
 export async function startRecorder(
-  onChunk: (chunk: ArrayBuffer) => void,
+  onChunk: (chunk: ArrayBuffer) => Promise<unknown>,
 ): Promise<RecorderHandle> {
   const [mic, sistema] = await Promise.all([capturarMicrofono(), capturarSistema()]);
 
@@ -55,8 +55,18 @@ export async function startRecorder(
     audioBitsPerSecond: 32000,
   });
 
-  recorder.ondataavailable = async (evento) => {
-    if (evento.data.size > 0) onChunk(await evento.data.arrayBuffer());
+  // Al detener, MediaRecorder emite un último trozo. Guardarlo es asíncrono, así que se
+  // anotan los envíos en curso para no cerrar la grabación antes de que lleguen al disco: ese
+  // último trozo son los segundos finales de la reunión.
+  const pendientes = new Set<Promise<unknown>>();
+  recorder.ondataavailable = (evento) => {
+    if (evento.data.size === 0) return;
+    const envio = evento.data
+      .arrayBuffer()
+      .then((buf) => onChunk(buf))
+      .catch(() => {})
+      .finally(() => pendientes.delete(envio));
+    pendientes.add(envio);
   };
 
   const inicio = Date.now();
@@ -68,9 +78,10 @@ export async function startRecorder(
     hasMic: !!mic,
     stop: () =>
       new Promise<number>((resolve) => {
-        recorder.onstop = () => {
+        recorder.onstop = async () => {
           [mic, sistema].forEach((entrada) => entrada?.getTracks().forEach((p) => p.stop()));
           contexto.close().catch(() => {});
+          await Promise.all([...pendientes]);
           resolve(Date.now() - inicio);
         };
         recorder.stop();

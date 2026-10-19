@@ -274,6 +274,39 @@ export default function SettingsPage({ onClose }: Props) {
                 />
               </label>
 
+              <div className="setting-row ai-key-row">
+                <div className="setting-text">
+                  <strong>Transcripción de reuniones</strong>
+                  <span>
+                    Whisper corre en este equipo: el audio no sale de aquí. El modelo se descarga
+                    una sola vez. Más grande es más preciso y más lento.
+                  </span>
+                </div>
+                <div className="ai-key-form">
+                  <select
+                    value={settings.whisperModel}
+                    onChange={async (e) => {
+                      setSaving(true);
+                      try {
+                        setSettings(
+                          await window.api.updateSettings({
+                            whisperModel: e.target.value as 'tiny' | 'base' | 'small',
+                          }),
+                        );
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    aria-label="Modelo de transcripción"
+                  >
+                    <option value="tiny">Rápido (42 MB) · menos preciso</option>
+                    <option value="base">Equilibrado (77 MB) · recomendado</option>
+                    <option value="small">Preciso (241 MB) · bastante más lento</option>
+                  </select>
+                </div>
+              </div>
+
               {settings.aiEnabled && (
                 <div className="setting-row ai-key-row">
                   <div className="setting-text">

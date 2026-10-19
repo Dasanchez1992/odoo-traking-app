@@ -281,6 +281,7 @@ export interface AppSettings {
   floatingWidget: boolean;
   showReleaseNotes: boolean;
   aiEnabled: boolean;
+  whisperModel: 'tiny' | 'base' | 'small';
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */
   autoCheckIn: string;
@@ -312,6 +313,17 @@ export interface ElectronApi {
   getRecordingAudio: (id: string) => Promise<Uint8Array>;
   openRecordingsFolder: () => Promise<boolean>;
   summarizeMeeting: (id: string) => Promise<Recording>;
+  beginTranscription: () => Promise<string>;
+  pushPcm: (token: string, chunk: ArrayBuffer) => Promise<boolean>;
+  runTranscription: (token: string, recordingId: string) => Promise<Recording>;
+  onTranscribeProgress: (
+    callback: (estado: {
+      id: string;
+      phase: 'modelo' | 'transcribiendo' | 'listo';
+      percent: number;
+      seconds?: number;
+    }) => void,
+  ) => () => void;
 
   getAiStatus: () => Promise<AiStatus>;
   saveAiKey: (key: string) => Promise<{ configured: boolean; encrypted: boolean; key: string }>;

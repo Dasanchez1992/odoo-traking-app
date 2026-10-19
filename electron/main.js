@@ -24,6 +24,7 @@ const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
 const recordings = require('./recordingStore');
+const transcribe = require('./transcribeService');
 const ai = require('./aiService');
 const aiKeyStore = require('./aiKeyStore');
 const {
@@ -699,6 +700,20 @@ ipcMain.handle('recordings:audio', async (_event, id) => recordings.readAudio(id
 ipcMain.handle('recordings:open-folder', async () => {
   await shell.openPath(recordings.carpeta());
   return true;
+});
+
+// Transcripción local: la ventana decodifica el audio y manda el PCM; aquí corre Whisper.
+ipcMain.handle('transcribe:begin', async () => transcribe.begin());
+
+ipcMain.handle('transcribe:pcm', async (_event, token, chunk) => transcribe.pushPcm(token, chunk));
+
+ipcMain.handle('transcribe:run', async (_event, token, recordingId) => {
+  const texto = await transcribe.run(token, {
+    modelo: settingsStore.read().whisperModel || 'base',
+    onProgress: (estado) => broadcast('transcribe:progress', { id: recordingId, ...estado }),
+  });
+  broadcast('transcribe:progress', { id: recordingId, phase: 'listo', percent: 100 });
+  return recordings.update(recordingId, { transcript: texto });
 });
 
 ipcMain.handle('ai:summarize-meeting', async (_event, id) => {

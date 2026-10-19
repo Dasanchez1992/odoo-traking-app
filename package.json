@@ -30,7 +30,8 @@
     "@anthropic-ai/sdk": "^0.135.0",
     "electron-updater": "^6.8.9",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@huggingface/transformers": "^4.3.1"
   },
   "build": {
     "appId": "com.elipsys.elideysi",
@@ -43,7 +44,10 @@
     "files": [
       "dist/**",
       "electron/**",
-      "package.json"
+      "package.json",
+      "!node_modules/sharp/**",
+      "!node_modules/@img/**",
+      "!node_modules/onnxruntime-web/dist/**"
     ],
     "publish": [
       {
@@ -56,7 +60,12 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -68,6 +77,10 @@
     },
     "linux": {
       "target": "AppImage"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/@huggingface/transformers/**",
+      "node_modules/onnxruntime-node/**"
+    ]
   }
 }

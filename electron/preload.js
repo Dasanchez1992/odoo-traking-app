@@ -21,6 +21,15 @@ contextBridge.exposeInMainWorld('api', {
   getRecordingAudio: (id) => ipcRenderer.invoke('recordings:audio', id),
   openRecordingsFolder: () => ipcRenderer.invoke('recordings:open-folder'),
   summarizeMeeting: (id) => ipcRenderer.invoke('ai:summarize-meeting', id),
+  beginTranscription: () => ipcRenderer.invoke('transcribe:begin'),
+  pushPcm: (token, chunk) => ipcRenderer.invoke('transcribe:pcm', token, chunk),
+  runTranscription: (token, recordingId) =>
+    ipcRenderer.invoke('transcribe:run', token, recordingId),
+  onTranscribeProgress: (callback) => {
+    const listener = (_event, estado) => callback(estado);
+    ipcRenderer.on('transcribe:progress', listener);
+    return () => ipcRenderer.removeListener('transcribe:progress', listener);
+  },
 
   getAiStatus: () => ipcRenderer.invoke('ai:status'),
   saveAiKey: (key) => ipcRenderer.invoke('ai:save-key', key),

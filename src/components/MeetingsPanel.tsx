@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Recording } from '../types';
 import { startRecorder, RecorderHandle } from '../lib/recorder';
+import { transcribeRecording } from '../lib/transcribe';
 import { formatElapsed, useNow } from '../lib/format';
 import { formatOdooDateShort } from '../lib/odooDate';
 import {
@@ -38,6 +39,8 @@ export default function MeetingsPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ phase: string; percent: number } | null>(null);
 
   const handleRef = useRef<RecorderHandle | null>(null);
   const now = useNow(recordingId !== null);
@@ -52,6 +55,10 @@ export default function MeetingsPanel() {
       .getAiStatus()
       .then((estado) => setAiOk(estado.available))
       .catch(() => setAiOk(false));
+
+    return window.api.onTranscribeProgress((estado) =>
+      setProgress(estado.phase === 'listo' ? null : estado),
+    );
   }, []);
 
   const actual = recordings.find((r) => r.id === selected) ?? null;
@@ -85,9 +92,9 @@ export default function MeetingsPanel() {
     setBusy(true);
     try {
       const ficha = await window.api.startRecording(title);
-      const handle = await startRecorder((chunk) => {
-        window.api.pushRecordingChunk(ficha.id, chunk).catch(() => {});
-      });
+      const handle = await startRecorder((chunk) =>
+        window.api.pushRecordingChunk(ficha.id, chunk),
+      );
       handleRef.current = handle;
       setSources({ mic: handle.hasMic, system: handle.hasSystemAudio });
       setRecordingId(ficha.id);
@@ -132,6 +139,23 @@ export default function MeetingsPanel() {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el texto');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function transcribir(id: string) {
+    setTranscribing(id);
+    setError(null);
+    setProgress({ phase: 'modelo', percent: 0 });
+    try {
+      await transcribeRecording(id);
+      const lista = await window.api.listRecordings();
+      setRecordings(lista);
+      setTranscript(lista.find((r) => r.id === id)?.transcript ?? '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo transcribir la reunión');
+    } finally {
+      setTranscribing(null);
+      setProgress(null);
     }
   }
 
@@ -295,6 +319,21 @@ export default function MeetingsPanel() {
                   </label>
 
                   <div className="meeting-actions">
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={() => transcribir(rec.id)}
+                      disabled={transcribing !== null}
+                      title="Transcribe el audio en este equipo, sin enviarlo a ningún sitio"
+                    >
+                      <IconSparkle size={13} />
+                      {transcribing === rec.id
+                        ? progress?.phase === 'modelo'
+                          ? `Descargando el modelo… ${progress.percent}%`
+                          : `Transcribiendo… ${progress?.percent ?? 0}%`
+                        : rec.transcript
+                          ? 'Volver a transcribir'
+                          : 'Transcribir audio'}
+                    </button>
                     {aiOk && (
                       <button onClick={resumir} disabled={summarizing || !transcript.trim()}>
                         <IconSparkle size={13} />

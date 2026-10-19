@@ -60,8 +60,18 @@ function start({ title }) {
 
 function appendChunk(id, chunk) {
   const stream = abiertas.get(id);
-  if (!stream) throw new Error('Esa grabación ya no está abierta');
-  stream.write(Buffer.from(chunk));
+  if (stream) {
+    stream.write(Buffer.from(chunk));
+    return true;
+  }
+
+  // Un trozo que llega tarde es audio real: se añade al archivo en vez de descartarlo. Solo se
+  // rechaza si la grabación no existe.
+  const ruta = audioPath(id);
+  if (!fs.existsSync(ruta)) throw new Error('Esa grabación no existe');
+  fs.appendFileSync(ruta, Buffer.from(chunk));
+  const actual = leerIndice().find((r) => r.id === id);
+  if (actual && actual.endedAt) update(id, { bytes: fs.statSync(ruta).size });
   return true;
 }
 

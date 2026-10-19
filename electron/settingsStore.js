@@ -13,6 +13,8 @@ const DEFAULTS = {
   autoCheckOut: '17:30',
   // Asistencia de IA (redacción, sugerencias y resúmenes).
   aiEnabled: true,
+  // Modelo de Whisper para transcribir reuniones en local: tiny, base o small.
+  whisperModel: 'base',
   // Aviso de novedades tras una actualización automática.
   showReleaseNotes: true,
   // Última versión cuyas novedades ya vio el usuario; no es una preferencia, es estado.
