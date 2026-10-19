@@ -666,6 +666,10 @@ ipcMain.handle('ai:triage-ticket', async (_event, ticketId) => {
   return { ...triaje, similar: contexto.similar };
 });
 
+ipcMain.handle('timesheets:set-project', async (_event, lineId, projectId) => {
+  return odooService.updateTimesheetProject(requireClient(), lineId, projectId);
+});
+
 ipcMain.handle('timesheets:delete', async (_event, lineId) => {
   return odooService.deleteTimesheet(requireClient(), lineId);
 });

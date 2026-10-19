@@ -315,6 +315,10 @@ export interface ElectronApi {
   getProjectTasks: (projectId: number) => Promise<ProjectTask[]>;
   getUnassignedTimesheets: () => Promise<UnassignedTimesheet[]>;
   assignTimesheetTask: (lineId: number, taskId: number) => Promise<{ id: number; taskId: number }>;
+  setTimesheetProject: (
+    lineId: number,
+    projectId: number,
+  ) => Promise<{ project_id: [number, string] | false }>;
   deleteTimesheet: (lineId: number) => Promise<{ id: number }>;
 
   getStages: (kind: RecordKind, parentId: number | null) => Promise<TaskStage[]>;

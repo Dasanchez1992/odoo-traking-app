@@ -121,6 +121,37 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
     }
   }
 
+  // Cambiar el proyecto cambia también las tareas candidatas, así que se recargan y se
+  // descarta lo que ya estuviera elegido o sugerido para esa fila.
+  async function handleProjectChange(line: UnassignedTimesheet, projectId: number) {
+    if (line.project_id && line.project_id[0] === projectId) return;
+    const proyecto = projects.find((p) => p.id === projectId);
+    if (!proyecto) return;
+
+    setBusyLine(line.id);
+    setError(null);
+    try {
+      await window.api.setTimesheetProject(line.id, projectId);
+      setLines((actual) =>
+        actual.map((l) =>
+          l.id === line.id ? { ...l, project_id: [proyecto.id, proyecto.name] } : l,
+        ),
+      );
+      setSelection(({ [line.id]: _descartada, ...resto }) => resto);
+      setSuggestions(({ [line.id]: _vieja, ...resto }) => resto);
+
+      if (!tasksByProject[projectId]) {
+        const tareas = await window.api.getProjectTasks(projectId).catch(() => []);
+        setTasksByProject((actual) => ({ ...actual, [projectId]: tareas }));
+      }
+      onAssigned();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cambiar el proyecto');
+    } finally {
+      setBusyLine(null);
+    }
+  }
+
   async function handleSuggest(line: UnassignedTimesheet) {
     if (!line.project_id) return;
     setSuggesting(line.id);
@@ -244,9 +275,20 @@ export default function UnassignedTimeModal({ onClose, onTimerStarted, onAssigne
                       <div className="free-time-meta">
                         <strong>{formatHours(line.unit_amount)}</strong>
                         <span>{formatOdooDateShort(line.date)}</span>
-                        <span className="free-time-project">
-                          {line.project_id ? line.project_id[1] : 'Sin proyecto'}
-                        </span>
+                        <div className="free-time-project-combo">
+                          <SearchSelect
+                            options={projects}
+                            value={line.project_id ? line.project_id[0] : null}
+                            onChange={(nuevo) => handleProjectChange(line, nuevo)}
+                            isOpen={openCombo === `proj:${line.id}`}
+                            onOpenChange={(open) => setOpenCombo(open ? `proj:${line.id}` : null)}
+                            placeholder="Sin proyecto"
+                            emptyLabel="Sin proyectos"
+                            searchPlaceholder="Buscar proyecto..."
+                            disabled={busyLine === line.id}
+                            ariaLabel={`Proyecto del tiempo del ${line.date}`}
+                          />
+                        </div>
                       </div>
 
                       <p className="free-time-desc" title={line.name}>

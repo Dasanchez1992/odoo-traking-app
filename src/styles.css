@@ -3787,3 +3787,37 @@ textarea:focus {
 .ai-key-error {
   margin-top: 2px;
 }
+
+/* El proyecto de un pendiente se puede corregir desde la propia fila. */
+.free-time-project-combo {
+  /* Se ajusta al nombre para que la flecha quede pegada a él, no al borde de la fila. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 60%;
+}
+
+.free-time-project-combo .combo-input {
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.free-time-project-combo .combo-input:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.free-time-project-combo .combo-input::after {
+  width: 5px;
+  height: 5px;
+}
+
+/* El disparador es estrecho, pero la lista necesita sitio para los nombres largos. */
+.free-time-project-combo .combo-list {
+  right: auto;
+  min-width: 280px;
+  max-width: min(380px, 70vw);
+}

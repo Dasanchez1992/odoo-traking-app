@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('api', {
   getProjectTasks: (projectId) => ipcRenderer.invoke('projects:tasks', projectId),
   getUnassignedTimesheets: () => ipcRenderer.invoke('timesheets:unassigned'),
   assignTimesheetTask: (lineId, taskId) => ipcRenderer.invoke('timesheets:assign', lineId, taskId),
+  setTimesheetProject: (lineId, projectId) =>
+    ipcRenderer.invoke('timesheets:set-project', lineId, projectId),
   deleteTimesheet: (lineId) => ipcRenderer.invoke('timesheets:delete', lineId),
 
   getStages: (kind, parentId) => ipcRenderer.invoke('record:stages', kind, parentId),
