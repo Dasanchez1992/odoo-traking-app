@@ -13,6 +13,8 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Recordar los fichajes a las 09:30 y 17:30 (hora de Ecuador), de lunes a viernes, o marcarlos
   automáticamente a la hora configurada si se activa la opción.
 - Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
+- Medir el tiempo de uso de aplicaciones y dejar que los administradores lo revisen por persona
+  (día, semana o mes) desde la pestaña Equipo.
 - Arrancar junto con el sistema operativo y quedarse en la bandeja del sistema.
 
 ## Comportamiento de la aplicación
@@ -61,6 +63,26 @@ el audio y lo remuestrea a 16 kHz mono, y el proceso principal ejecuta el modelo
 una sola vez a `modelos-whisper/`. El modelo se elige en Configuración (`tiny` 42 MB, `base` 77 MB
 por defecto, `small` 241 MB). Del texto resultante sale el resumen, ese sí con la API de Claude.
 
+### Uso de aplicaciones
+
+Se registra el tiempo que cada programa pasa **en primer plano**, y nada más: ni títulos de
+ventana, ni teclas, ni capturas. En Windows lo averigua un PowerShell de fondo
+(`vigilante-uso.ps1`, escrito en la carpeta de datos) que pregunta a `user32.dll` cada cinco
+segundos; si una política de grupo impide ejecutar el `.ps1`, se reintenta con `-EncodedCommand`.
+Más de cinco minutos sin tocar el equipo (`powerMonitor.getSystemIdleTime`) cuentan como inactivo.
+
+Cada día se guarda primero en `uso-apps/<fecha>.json` dentro de la carpeta de datos (120 días) y
+se sube a Odoo cada cinco minutos como un **adjunto suelto** —sin registro asociado— llamado
+`elipsys-uso-u<uid>-<fecha>.json`, con el resumen en el campo `description`. Odoo solo deja leer
+los adjuntos sin `res_id` a quien los creó y a los administradores de Ajustes
+(`base.group_system`), así que el detalle de cada persona no queda al alcance del resto de la
+plantilla. Cada cliente borra en Odoo sus propios días de hace más de 180 días.
+
+La pestaña Equipo muestra el reparto por persona y por aplicación con el mismo permiso de siempre
+(`hr.group_hr_manager`) **más** el de Ajustes; sin ese segundo permiso el panel lo dice en vez de
+enseñar datos a medias. Cada persona ve lo suyo en Configuración, donde también puede apagar el
+registro.
+
 ### El nombre anterior
 
 La aplicación se llamaba **Elideysi** hasta la versión 1.7.0. El `appId`
@@ -76,6 +98,8 @@ volver a iniciar sesión.
 - Módulo **Hoja de horas** (`hr_timesheet`) si querés que el tiempo registrado se vea en las hojas de horas del proyecto.
 - Módulo **Asistencias** (`hr_attendance`) y que el usuario tenga un empleado vinculado (`res.users.employee_id`).
 - Un usuario o API key con permisos para leer/escribir esos modelos.
+- Para revisar el uso de aplicaciones del equipo: **Administración / Ajustes**
+  (`base.group_system`), además de **Empleados / Administrador** que ya pide la pestaña Equipo.
 
 ## Instalación
 

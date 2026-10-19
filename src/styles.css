@@ -2005,6 +2005,173 @@ textarea:focus {
 }
 
 /* ============================================================
+   Uso de aplicaciones
+   ============================================================ */
+.usage-range {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.usage-total {
+  padding: 4px 18px 14px;
+}
+
+.usage-bar {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+.usage-bar.is-thin {
+  height: 8px;
+}
+
+.usage-bar > * {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+}
+
+.usage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.usage-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usage-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.usage-legend em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.usage-head,
+.usage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) 70px 110px 130px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+}
+
+.usage-head {
+  height: 34px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.usage-person {
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-person:last-of-type {
+  border-bottom: none;
+}
+
+.usage-row {
+  width: 100%;
+  min-height: 52px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.usage-row:hover {
+  background: var(--surface-hover);
+}
+
+.usage-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.usage-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.usage-name svg {
+  flex: none;
+  color: var(--text-subtle);
+  transition: transform 0.15s var(--ease);
+}
+
+.usage-name svg.is-open {
+  transform: rotate(180deg);
+}
+
+.usage-cell {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.usage-detail {
+  padding: 4px 18px 16px 40px;
+}
+
+@media (max-width: 1024px) {
+  .usage-head > *:nth-child(3),
+  .usage-row > *:nth-child(3),
+  .usage-head > *:nth-child(4),
+  .usage-row > *:nth-child(4) {
+    display: none;
+  }
+
+  .usage-head,
+  .usage-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) 130px;
+  }
+}
+
+@media (max-width: 760px) {
+  .usage-head > *:nth-child(2),
+  .usage-row > *:nth-child(2) {
+    display: none;
+  }
+
+  .usage-head,
+  .usage-row {
+    grid-template-columns: minmax(0, 1fr) 120px;
+  }
+}
+
+/* ============================================================
    Panel de equipo
    ============================================================ */
 .team-table-head,

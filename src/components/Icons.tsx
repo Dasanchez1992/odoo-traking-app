@@ -260,3 +260,11 @@ export function IconBack({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconChevronDown({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}

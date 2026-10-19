@@ -809,6 +809,7 @@ async function fetchTeamProductivity(client) {
         name: employee.name,
         department: Array.isArray(employee.department_id) ? employee.department_id[1] : null,
         hasUser: !!employee.user_id,
+        userId: Array.isArray(employee.user_id) ? employee.user_id[0] : null,
         firstCheckIn: attendance.firstCheckIn,
         checkedIn: attendance.open,
         workedToday: Math.round(attendance.worked * 100) / 100,
@@ -1304,8 +1305,136 @@ async function fetchTicketContext(client, ticketId) {
   };
 }
 
+// --- Uso de aplicaciones ------------------------------------------------------------------------
+// Cada equipo sube un resumen por día como adjunto suelto (sin registro asociado). Odoo solo deja
+// leer esos adjuntos a quien los creó y a los administradores de Ajustes, así que el detalle de
+// cada persona no queda al alcance del resto de la plantilla.
+const PREFIJO_USO = 'elipsys-uso';
+
+function nombreUso(uid, fecha) {
+  return `${PREFIJO_USO}-u${uid}-${fecha}.json`;
+}
+
+// Solo quien administra Ajustes puede leer los adjuntos sueltos de los demás; sin ese permiso la
+// búsqueda devolvería únicamente los propios y la pantalla engañaría.
+async function canReviewUsage(client) {
+  try {
+    const resultado = await client.execute_kw('res.users', 'has_group', [
+      [client.uid],
+      'base.group_system',
+    ]);
+    if (typeof resultado === 'boolean') return resultado;
+  } catch {
+    // has_group puede no ser invocable por RPC según la versión.
+  }
+  return false;
+}
+
+async function pushUsageDay(client, resumen) {
+  const name = nombreUso(client.uid, resumen.date);
+  const description = JSON.stringify(resumen);
+  const existentes = await client.execute_kw(
+    'ir.attachment',
+    'search',
+    [
+      [
+        ['name', '=', name],
+        ['res_id', '=', false],
+      ],
+    ],
+    { limit: 1 },
+  );
+
+  if (existentes.length) {
+    await client.execute_kw('ir.attachment', 'write', [[existentes[0]], { description }]);
+    return existentes[0];
+  }
+
+  return client.execute_kw('ir.attachment', 'create', [
+    { name, description, mimetype: 'application/json' },
+  ]);
+}
+
+function diaDeAdjunto(adjunto) {
+  const fecha = (adjunto.name.match(/(\d{4}-\d{2}-\d{2})/) || [])[1];
+  if (!fecha) return null;
+
+  let datos;
+  try {
+    datos = JSON.parse(adjunto.description || '{}');
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(datos.apps)) return null;
+
+  const usuario = Array.isArray(adjunto.create_uid) ? adjunto.create_uid : [adjunto.create_uid, ''];
+  return {
+    date: fecha,
+    userId: usuario[0],
+    userName: usuario[1] || '',
+    activeSeconds: Math.round(datos.activeSeconds || 0),
+    idleSeconds: Math.round(datos.idleSeconds || 0),
+    updatedAt: datos.updatedAt || null,
+    apps: datos.apps
+      .filter((a) => a && a.seconds > 0)
+      .map((a) => ({
+        app: String(a.app || '').slice(0, 60),
+        label: String(a.label || a.app || '').slice(0, 80),
+        seconds: Math.round(a.seconds),
+      })),
+  };
+}
+
+async function fetchTeamUsage(client, { from, to }) {
+  // El resumen de un día se escribe ese mismo día o después, nunca antes: con write_date basta
+  // para acotar la búsqueda y el recorte fino se hace por la fecha del nombre.
+  const adjuntos = await client.execute_kw(
+    'ir.attachment',
+    'search_read',
+    [
+      [
+        ['name', '=like', `${PREFIJO_USO}-u%`],
+        ['res_id', '=', false],
+        ['write_date', '>=', `${from} 00:00:00`],
+      ],
+      ['name', 'description', 'create_uid'],
+    ],
+    { limit: 3000, order: 'name asc' },
+  );
+
+  const days = adjuntos
+    .map(diaDeAdjunto)
+    .filter((dia) => dia && dia.date >= from && dia.date <= to);
+
+  return { from, to, days };
+}
+
+// Cada cliente limpia lo suyo: en Odoo no se guardan los días de hace más de medio año.
+async function pruneRemoteUsage(client, dias = 180) {
+  const limite = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
+  const prefijo = `${PREFIJO_USO}-u${client.uid}-`;
+  const viejos = await client.execute_kw(
+    'ir.attachment',
+    'search',
+    [
+      [
+        ['name', '=like', `${prefijo}%`],
+        ['name', '<', `${prefijo}${limite}`],
+        ['res_id', '=', false],
+      ],
+    ],
+    { limit: 500 },
+  );
+  if (viejos.length) await client.execute_kw('ir.attachment', 'unlink', [viejos]);
+  return viejos.length;
+}
+
 module.exports = {
   canManageTeam,
+  canReviewUsage,
+  pushUsageDay,
+  fetchTeamUsage,
+  pruneRemoteUsage,
   fetchTeamProductivity,
   fetchTeamSchedule,
   fetchAssignedTasks,

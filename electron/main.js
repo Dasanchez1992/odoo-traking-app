@@ -18,12 +18,14 @@ const odooClient = require('./odooClient');
 const odooService = require('./odooService');
 const sessionStore = require('./sessionStore');
 const settingsStore = require('./settingsStore');
-const { formatOdooDateTime } = require('./dateUtil');
+const { formatOdooDateTime, ecuadorDateKey } = require('./dateUtil');
 const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
 const recordings = require('./recordingStore');
+const usageStore = require('./usageStore');
+const { createUsageTracker } = require('./usageTracker');
 const transcribe = require('./transcribeService');
 const ai = require('./aiService');
 const aiKeyStore = require('./aiKeyStore');
@@ -35,6 +37,7 @@ const {
 } = require('./updater');
 
 const OVERDUE_POLL_MS = 5 * 60 * 1000;
+const USAGE_SYNC_MS = 5 * 60 * 1000;
 const REFRESH_MS = 5 * 60 * 1000;
 const LONG_SHIFT_HOURS = 12;
 const MAX_NOTIFICATIONS = 60;
@@ -59,6 +62,9 @@ let overduePollTimer = null;
 let notifiedTaskIds = new Set();
 let isQuitting = false;
 let refreshTimer = null;
+let usageTracker = null;
+let usageTimer = null;
+let usageError = null;
 // Historial de avisos, para poder revisarlos después de que el aviso del sistema desaparezca.
 let notifications = [];
 let notifiedKeys = new Set();
@@ -463,6 +469,59 @@ function startOverduePolling() {
   overduePollTimer = setInterval(pollOverdueTasks, OVERDUE_POLL_MS);
 }
 
+// --- Uso de aplicaciones ------------------------------------------------------------------------
+// Lo que se registra es el tiempo en primer plano de cada programa, nada más: ni títulos de
+// ventana, ni teclas, ni capturas. Se guarda primero en el equipo y se sube en resúmenes diarios.
+const FECHA_SUELTA = /^\d{4}-\d{2}-\d{2}$/;
+// Un rango mal formado (o de dos años) no debe acabar en una consulta a Odoo: se recorta aquí.
+function rangoValido(from, to, maxDias = 92) {
+  const hoy = ecuadorDateKey(new Date());
+  const desde = FECHA_SUELTA.test(from) ? from : hoy;
+  const hasta = FECHA_SUELTA.test(to) && to >= desde ? to : desde;
+  const dias = (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000;
+  if (dias <= maxDias) return { from: desde, to: hasta };
+  const tope = new Date(Date.parse(`${desde}T00:00:00Z`) + maxDias * 86400000);
+  return { from: desde, to: tope.toISOString().slice(0, 10) };
+}
+
+async function sincronizarUso() {
+  if (!client) return;
+  const dias = usageStore.pendientes();
+  for (const dia of dias) {
+    try {
+      await odooService.pushUsageDay(client, usageStore.resumen(dia));
+      usageStore.marcarSincronizado(dia.date);
+      usageError = null;
+    } catch (err) {
+      // Si falla uno fallarán los demás (red o permisos): se reintenta en la siguiente vuelta.
+      usageError = err.message;
+      break;
+    }
+  }
+}
+
+function aplicarRegistroDeUso() {
+  const activo = settingsStore.read().trackAppUsage;
+  if (!usageTracker) usageTracker = createUsageTracker({ store: usageStore });
+
+  if (activo) {
+    usageTracker.start();
+    if (!usageTimer) usageTimer = setInterval(sincronizarUso, USAGE_SYNC_MS);
+  } else {
+    usageTracker.stop();
+    if (usageTimer) {
+      clearInterval(usageTimer);
+      usageTimer = null;
+    }
+  }
+}
+
+function ponerseAlDiaConElUso() {
+  usageStore.limpiarAntiguos();
+  sincronizarUso();
+  if (client) odooService.pruneRemoteUsage(client).catch(() => {});
+}
+
 async function connectAndVerify(credentials) {
   const uid = await odooClient.login(credentials);
   const newClient = odooClient.makeClient({ ...credentials, uid });
@@ -478,6 +537,7 @@ ipcMain.handle('auth:login', async (_event, credentials) => {
   client = newClient;
   sessionStore.save(credentials);
   startOverduePolling();
+  ponerseAlDiaConElUso();
   return user;
 });
 
@@ -488,6 +548,7 @@ ipcMain.handle('auth:restore', async () => {
     const { client: newClient, user } = await connectAndVerify(saved);
     client = newClient;
     startOverduePolling();
+    ponerseAlDiaConElUso();
     return user;
   } catch {
     sessionStore.clear();
@@ -549,6 +610,55 @@ ipcMain.handle('team:summary', async () => {
 ipcMain.handle('team:schedule', async () => {
   return odooService.fetchTeamSchedule(requireClient());
 });
+
+ipcMain.handle('usage:available', async () => {
+  try {
+    return await odooService.canReviewUsage(requireClient());
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('usage:team', async (_event, { from, to } = {}) => {
+  const rango = rangoValido(from, to);
+  const datos = await odooService.fetchTeamUsage(requireClient(), rango);
+
+  // Lo propio sale de este equipo en cuanto va por delante de lo subido: el día en curso se ve
+  // al minuto y no con el retraso de la última sincronización.
+  const propios = new Map(
+    usageStore
+      .rango(rango.from, rango.to)
+      .map((dia) => usageStore.resumen(dia))
+      .filter((dia) => dia.activeSeconds > 0 || dia.idleSeconds > 0)
+      .map((dia) => [dia.date, dia]),
+  );
+
+  const days = datos.days.map((dia) => {
+    if (dia.userId !== client.uid) return dia;
+    const local = propios.get(dia.date);
+    propios.delete(dia.date);
+    const mejor = local && local.activeSeconds > dia.activeSeconds ? local : dia;
+    return { ...mejor, userId: client.uid, userName: 'Tú' };
+  });
+  propios.forEach((dia) => days.push({ ...dia, userId: client.uid, userName: 'Tú' }));
+
+  return { ...datos, days };
+});
+
+ipcMain.handle('usage:mine', async (_event, { from, to } = {}) => {
+  const rango = rangoValido(from, to);
+  return {
+    ...rango,
+    days: usageStore.rango(rango.from, rango.to).map((dia) => usageStore.resumen(dia)),
+  };
+});
+
+ipcMain.handle('usage:status', async () => ({
+  ...(usageTracker ? usageTracker.status() : { supported: false, running: false, reason: null }),
+  enabled: settingsStore.read().trackAppUsage,
+  lastError: usageError,
+  today: usageStore.resumen(usageStore.leerDia(ecuadorDateKey(new Date()))),
+}));
 
 ipcMain.handle('projects:list', async () => {
   return odooService.fetchProjects(requireClient());
@@ -1024,6 +1134,7 @@ ipcMain.handle('settings:update', async (_event, patch) => {
   } else {
     autoAttendance.stop();
   }
+  aplicarRegistroDeUso();
   syncMiniWindow();
   return { ...next, startAtLoginSupported: process.platform !== 'linux' };
 });
@@ -1073,6 +1184,8 @@ if (!gotLock) {
     applyStartAtLogin(settingsStore.read().startAtLogin);
     reminders.start();
     if (settingsStore.read().autoAttendance) autoAttendance.start();
+    aplicarRegistroDeUso();
+    ponerseAlDiaConElUso();
 
     createWindow();
     createTray();
@@ -1097,6 +1210,7 @@ app.on('before-quit', () => {
   stopBackgroundRefresh();
   reminders.stop();
   autoAttendance.stop();
+  if (usageTracker) usageTracker.stop();
 });
 
 app.on('window-all-closed', () => {

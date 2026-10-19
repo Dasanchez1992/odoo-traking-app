@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { TeamMember, TeamSummary } from '../types';
 import { formatOdooTime } from '../lib/odooDate';
 import { IconAlert, IconClock, IconRefresh, IconSearch, IconTasks } from './Icons';
+import TeamUsage from './TeamUsage';
 
 type SortKey = 'name' | 'firstCheckIn' | 'loggedToday' | 'loggedWeek' | 'coverage';
 
@@ -246,6 +247,8 @@ export default function TeamPanel() {
           </>
         )}
       </section>
+
+      <TeamUsage members={members} />
     </div>
   );
 }

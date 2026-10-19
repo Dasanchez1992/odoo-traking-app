@@ -191,6 +191,7 @@ export interface TeamMember {
   name: string;
   department: string | null;
   hasUser: boolean;
+  userId: number | null;
   firstCheckIn: string | null;
   checkedIn: boolean;
   workedToday: number;
@@ -203,6 +204,41 @@ export interface TeamSummary {
   today: string;
   weekStart: string;
   employees: TeamMember[];
+}
+
+export interface UsageApp {
+  app: string;
+  label: string;
+  seconds: number;
+}
+
+/** Resumen de uso de aplicaciones de una persona en un día. */
+export interface UsageDay {
+  date: string;
+  userId?: number;
+  userName?: string;
+  activeSeconds: number;
+  idleSeconds: number;
+  updatedAt?: string | null;
+  apps: UsageApp[];
+}
+
+export interface UsageRange {
+  from: string;
+  to: string;
+  days: UsageDay[];
+}
+
+export interface UsageStatus {
+  /** El sistema operativo permite saber qué aplicación está en primer plano. */
+  supported: boolean;
+  running: boolean;
+  enabled: boolean;
+  reason: string | null;
+  lastError: string | null;
+  current: { app: string; label: string } | null;
+  idleSeconds: number;
+  today: UsageDay;
 }
 
 export interface ScheduleTask {
@@ -282,6 +318,7 @@ export interface AppSettings {
   showReleaseNotes: boolean;
   aiEnabled: boolean;
   whisperModel: 'tiny' | 'base' | 'small';
+  trackAppUsage: boolean;
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */
   autoCheckIn: string;
@@ -390,6 +427,10 @@ export interface ElectronApi {
   canManageTeam: () => Promise<boolean>;
   getTeamSummary: () => Promise<TeamSummary>;
   getTeamSchedule: () => Promise<TeamSchedule>;
+  canReviewUsage: () => Promise<boolean>;
+  getTeamUsage: (rango: { from: string; to: string }) => Promise<UsageRange>;
+  getMyUsage: (rango: { from: string; to: string }) => Promise<UsageRange>;
+  getUsageStatus: () => Promise<UsageStatus>;
 
   getTimerState: () => Promise<TimerState[]>;
   startTimer: (

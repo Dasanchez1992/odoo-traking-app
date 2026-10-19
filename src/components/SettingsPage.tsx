@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AiStatus, AppSettings, UpdateStatus } from '../types';
+import { AiStatus, AppSettings, UpdateStatus, UsageStatus } from '../types';
+import { formatearDuracion } from '../lib/usage';
 import { IconAlert, IconBack, IconCheck, IconSparkle } from './Icons';
 
 interface Props {
@@ -36,6 +37,7 @@ export default function SettingsPage({ onClose }: Props) {
   const [diagnosing, setDiagnosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uso, setUso] = useState<UsageStatus | null>(null);
 
   const [ai, setAi] = useState<AiStatus | null>(null);
   const [aiKey, setAiKey] = useState('');
@@ -58,6 +60,14 @@ export default function SettingsPage({ onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    if (!settings) return;
+    window.api
+      .getUsageStatus()
+      .then(setUso)
+      .catch(() => setUso(null));
+  }, [settings]);
+
   async function toggle(
     key:
       | 'startAtLogin'
@@ -65,6 +75,7 @@ export default function SettingsPage({ onClose }: Props) {
       | 'floatingWidget'
       | 'autoAttendance'
       | 'showReleaseNotes'
+      | 'trackAppUsage'
       | 'aiEnabled',
   ) {
     if (!settings) return;
@@ -255,6 +266,54 @@ export default function SettingsPage({ onClose }: Props) {
                   onChange={() => toggle('floatingWidget')}
                 />
               </label>
+
+              <label className="setting-row">
+                <div className="setting-text">
+                  <strong>Registrar el uso de aplicaciones</strong>
+                  <span>
+                    Suma el tiempo que cada programa pasa en primer plano y lo envía a Odoo en un
+                    resumen por día. No guarda títulos de ventana, ni teclas, ni capturas de
+                    pantalla. Lo revisan los administradores desde la pestaña Equipo; aquí abajo
+                    ves lo tuyo.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  checked={settings.trackAppUsage}
+                  disabled={saving}
+                  onChange={() => toggle('trackAppUsage')}
+                />
+              </label>
+
+              {settings.trackAppUsage && uso && (
+                <div className="setting-row" style={{ display: 'block' }}>
+                  <div className="setting-text">
+                    <strong>Tu uso de hoy</strong>
+                    {uso.supported === false ? (
+                      <span>{uso.reason || 'Este sistema no permite saber qué programa está en primer plano.'}</span>
+                    ) : uso.today.apps.length === 0 ? (
+                      <span>Todavía no hay nada registrado hoy.</span>
+                    ) : (
+                      <>
+                        <span>
+                          {formatearDuracion(uso.today.activeSeconds)} de actividad y{' '}
+                          {formatearDuracion(uso.today.idleSeconds)} sin tocar el equipo.
+                        </span>
+                        <ul className="usage-legend" style={{ marginTop: 8 }}>
+                          {uso.today.apps.slice(0, 6).map((app) => (
+                            <li key={app.app}>
+                              {app.label}
+                              <em>{formatearDuracion(app.seconds)}</em>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {uso.lastError && <span>No se pudo subir a Odoo: {uso.lastError}</span>}
+                  </div>
+                </div>
+              )}
 
               <label className="setting-row">
                 <div className="setting-text">

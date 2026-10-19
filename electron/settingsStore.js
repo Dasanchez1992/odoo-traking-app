@@ -15,6 +15,8 @@ const DEFAULTS = {
   aiEnabled: true,
   // Modelo de Whisper para transcribir reuniones en local: tiny, base o small.
   whisperModel: 'base',
+  // Registro del tiempo de uso de aplicaciones (lo revisan los administradores en Equipo).
+  trackAppUsage: true,
   // Aviso de novedades tras una actualización automática.
   showReleaseNotes: true,
   // Última versión cuyas novedades ya vio el usuario; no es una preferencia, es estado.
