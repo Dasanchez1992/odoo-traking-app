@@ -1,6 +1,6 @@
 {
   "name": "elipsys-time",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Elipsys Time: app de escritorio para ver tareas asignadas en Odoo, registrar tiempo trabajado, fichar entrada/salida y recibir avisos de tareas caducadas",
   "main": "electron/main.js",
   "author": "Danilo Sanchez",
