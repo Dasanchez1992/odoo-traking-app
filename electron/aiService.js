@@ -1,51 +1,50 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
-// La clave vive en Odoo, no en el instalador: así no se reparte un secreto con la app.
-const PARAMETRO_CLAVE = 'elideysi-api-key';
+const keyStore = require('./aiKeyStore');
 
 // Tareas cortas con revisión humana van al modelo rápido; los textos largos, al que razona más.
 const MODELO_CORTO = 'claude-haiku-5-5';
 const MODELO_LARGO = 'claude-sonnet-5-5';
 
-let clave = null;
 let cliente = null;
+let claveCliente = null;
 
+// Cada persona guarda su propia clave en su equipo; al cambiarla se descarta el cliente anterior.
 function resetAi() {
-  clave = null;
   cliente = null;
+  claveCliente = null;
 }
 
-async function getApiKey(odoo) {
-  if (clave) return clave;
-
-  let valor;
-  try {
-    valor = await odoo.execute_kw('ir.config_parameter', 'get_param', [PARAMETRO_CLAVE]);
-  } catch (err) {
-    const msg = (err && err.message) || '';
-    if (/access|acceso|permis|permitid|allowed|AccessError/i.test(msg)) {
-      throw new Error(
-        `Tu usuario de Odoo no puede leer el parámetro «${PARAMETRO_CLAVE}»: ese modelo solo lo ` +
-          'lee el grupo Ajustes → Administrador. Pide que te den ese permiso o que la clave se ' +
-          'exponga por otra vía.',
-      );
-    }
-    throw err;
-  }
-
-  if (!valor) {
+function getApiKey() {
+  const clave = keyStore.load();
+  if (!clave) {
     throw new Error(
-      `No hay ninguna clave guardada en el parámetro «${PARAMETRO_CLAVE}» de Odoo.`,
+      'Todavía no has guardado tu clave de Claude. Ve a Configuración → Asistencia de IA.',
     );
   }
-  clave = String(valor).trim();
   return clave;
 }
 
-async function getClient(odoo) {
-  if (cliente) return cliente;
-  cliente = new Anthropic({ apiKey: await getApiKey(odoo) });
+function getClient() {
+  const clave = getApiKey();
+  if (cliente && claveCliente === clave) return cliente;
+  cliente = new Anthropic({ apiKey: clave });
+  claveCliente = clave;
   return cliente;
+}
+
+// Comprueba que la clave sirve sin gastar tokens: listar modelos no consume nada.
+async function testApiKey(key) {
+  const api = new Anthropic({ apiKey: String(key || '').trim() });
+  try {
+    await api.models.list({ limit: 1 });
+    return true;
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError) {
+      throw new Error('La clave no es válida para la API de Claude.');
+    }
+    throw new Error(err instanceof Error ? err.message : 'No se pudo comprobar la clave');
+  }
 }
 
 function textOf(response) {
@@ -57,8 +56,8 @@ function textOf(response) {
 }
 
 // Una sola puerta de salida hacia la API: así el manejo de errores y los topes viven en un sitio.
-async function ask(odoo, { model, system, prompt, maxTokens, effort, schema }) {
-  const api = await getClient(odoo);
+async function ask({ model, system, prompt, maxTokens, effort, schema }) {
+  const api = getClient();
   const peticion = {
     model,
     max_tokens: maxTokens,
@@ -75,9 +74,7 @@ async function ask(odoo, { model, system, prompt, maxTokens, effort, schema }) {
     respuesta = await api.messages.create(peticion);
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) {
-      throw new Error(
-        `La clave guardada en «${PARAMETRO_CLAVE}» no es válida para la API de Claude.`,
-      );
+      throw new Error('Tu clave de Claude no es válida. Revísala en Configuración.');
     }
     if (err instanceof Anthropic.RateLimitError) {
       throw new Error('La API de Claude está limitando las peticiones. Inténtalo en un momento.');
@@ -102,7 +99,7 @@ async function ask(odoo, { model, system, prompt, maxTokens, effort, schema }) {
 
 // 1. Redactar la descripción de la hoja de horas ---------------------------------------------
 
-async function draftTimesheetDescription(odoo, datos) {
+async function draftTimesheetDescription(datos) {
   const { taskName, projectName, stageName, minutes, notes, previous = [] } = datos;
 
   const contexto = [
@@ -118,7 +115,7 @@ async function draftTimesheetDescription(odoo, datos) {
     .filter(Boolean)
     .join('\n');
 
-  return ask(odoo, {
+  return ask({
     model: MODELO_CORTO,
     maxTokens: 300,
     effort: 'low',
@@ -145,12 +142,12 @@ const ESQUEMA_SUGERENCIA = {
   additionalProperties: false,
 };
 
-async function suggestTaskForTimesheet(odoo, { description, projectName, date, tasks }) {
+async function suggestTaskForTimesheet({ description, projectName, date, tasks }) {
   if (!tasks.length) throw new Error('El proyecto no tiene tareas abiertas que sugerir.');
 
   const lista = tasks.map((t) => `${t.id}: ${t.name}`).join('\n');
 
-  return ask(odoo, {
+  return ask({
     model: MODELO_CORTO,
     maxTokens: 400,
     effort: 'low',
@@ -168,7 +165,7 @@ async function suggestTaskForTimesheet(odoo, { description, projectName, date, t
 
 // 3. Resumen semanal por proyecto -------------------------------------------------------------
 
-async function weeklySummary(odoo, { since, until, byProject }) {
+async function weeklySummary({ since, until, byProject }) {
   const detalle = byProject
     .map((proyecto) => {
       const entradas = proyecto.entries
@@ -178,7 +175,7 @@ async function weeklySummary(odoo, { since, until, byProject }) {
     })
     .join('\n\n');
 
-  return ask(odoo, {
+  return ask({
     model: MODELO_LARGO,
     maxTokens: 2000,
     effort: 'medium',
@@ -210,14 +207,14 @@ const ESQUEMA_TRIAJE = {
   additionalProperties: false,
 };
 
-async function triageTicket(odoo, { ticket, similar }) {
+async function triageTicket({ ticket, similar }) {
   const parecidos = similar.length
     ? similar
         .map((t) => `${t.id}: ${t.name}${t.resolution ? `\n   Se resolvió así: ${t.resolution}` : ''}`)
         .join('\n')
     : 'No se encontraron tickets anteriores parecidos.';
 
-  return ask(odoo, {
+  return ask({
     model: MODELO_LARGO,
     maxTokens: 1500,
     effort: 'medium',
@@ -241,9 +238,9 @@ async function triageTicket(odoo, { ticket, similar }) {
 module.exports = {
   resetAi,
   getApiKey,
+  testApiKey,
   draftTimesheetDescription,
   suggestTaskForTimesheet,
   weeklySummary,
   triageTicket,
-  PARAMETRO_CLAVE,
 };

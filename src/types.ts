@@ -235,6 +235,9 @@ export interface TeamSchedule {
 
 export interface AiStatus {
   available: boolean;
+  configured: boolean;
+  /** Clave enmascarada, solo para mostrarla en la configuración. */
+  key?: string;
   reason?: string;
 }
 
@@ -287,6 +290,8 @@ export interface ElectronApi {
   getProductivity: () => Promise<ProductivityData>;
 
   getAiStatus: () => Promise<AiStatus>;
+  saveAiKey: (key: string) => Promise<{ configured: boolean; encrypted: boolean; key: string }>;
+  clearAiKey: () => Promise<{ configured: boolean }>;
   draftDescription: (payload: {
     kind?: RecordKind;
     recordId?: number;

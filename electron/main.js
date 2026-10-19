@@ -23,6 +23,7 @@ const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
 const ai = require('./aiService');
+const aiKeyStore = require('./aiKeyStore');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -602,14 +603,22 @@ function requireAi() {
 }
 
 ipcMain.handle('ai:status', async () => {
-  if (!aiHabilitada()) return { available: false, reason: 'desactivada' };
-  if (!client) return { available: false, reason: 'sin sesión' };
-  try {
-    await ai.getApiKey(client);
-    return { available: true };
-  } catch (err) {
-    return { available: false, reason: err.message };
-  }
+  const configurada = !!aiKeyStore.load();
+  if (!aiHabilitada()) return { available: false, configured: configurada, reason: 'desactivada' };
+  return { available: configurada, configured: configurada, key: aiKeyStore.mask(aiKeyStore.load()) };
+});
+
+ipcMain.handle('ai:save-key', async (_event, key) => {
+  await ai.testApiKey(key);
+  const { encrypted } = aiKeyStore.save(key);
+  ai.resetAi();
+  return { configured: true, encrypted, key: aiKeyStore.mask(String(key).trim()) };
+});
+
+ipcMain.handle('ai:clear-key', async () => {
+  aiKeyStore.clear();
+  ai.resetAi();
+  return { configured: false };
 });
 
 ipcMain.handle('ai:draft-description', async (_event, payload = {}) => {
@@ -618,7 +627,7 @@ ipcMain.handle('ai:draft-description', async (_event, payload = {}) => {
   const previous = Number.isInteger(recordId)
     ? await odooService.fetchRecentTimesheetNames(c, kind, recordId)
     : [];
-  return ai.draftTimesheetDescription(c, {
+  return ai.draftTimesheetDescription({
     taskName,
     projectName,
     stageName,
@@ -631,7 +640,7 @@ ipcMain.handle('ai:draft-description', async (_event, payload = {}) => {
 ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectId, projectName, date } = {}) => {
   const c = requireAi();
   const tasks = await odooService.fetchProjectTasks(c, projectId);
-  const sugerencia = await ai.suggestTaskForTimesheet(c, {
+  const sugerencia = await ai.suggestTaskForTimesheet({
     description,
     projectName,
     date,
@@ -646,14 +655,14 @@ ipcMain.handle('ai:weekly-summary', async () => {
   if (datos.byProject.length === 0) {
     throw new Error('Esta semana todavía no tienes horas registradas que resumir.');
   }
-  const texto = await ai.weeklySummary(c, datos);
+  const texto = await ai.weeklySummary(datos);
   return { ...datos, text: texto };
 });
 
 ipcMain.handle('ai:triage-ticket', async (_event, ticketId) => {
   const c = requireAi();
   const contexto = await odooService.fetchTicketContext(c, ticketId);
-  const triaje = await ai.triageTicket(c, contexto);
+  const triaje = await ai.triageTicket(contexto);
   return { ...triaje, similar: contexto.similar };
 });
 

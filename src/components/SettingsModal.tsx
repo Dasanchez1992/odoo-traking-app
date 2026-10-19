@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AppSettings, UpdateStatus } from '../types';
-import { IconAlert, IconClose } from './Icons';
+import { AiStatus, AppSettings, UpdateStatus } from '../types';
+import { IconAlert, IconCheck, IconClose, IconSparkle } from './Icons';
 
 interface Props {
   onClose: () => void;
@@ -37,9 +37,15 @@ export default function SettingsModal({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [ai, setAi] = useState<AiStatus | null>(null);
+  const [aiKey, setAiKey] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   useEffect(() => {
     window.api.getSettings().then(setSettings).catch(() => setError('No se pudo leer la configuración'));
     window.api.getAppVersion().then(setVersion).catch(() => {});
+    window.api.getAiStatus().then(setAi).catch(() => {});
     window.api.getUpdateStatus().then(setUpdate).catch(() => {});
     return window.api.onUpdateStatus(setUpdate);
   }, []);
@@ -83,6 +89,37 @@ export default function SettingsModal({ onClose }: Props) {
       setSettings(await window.api.updateSettings({ [key]: value }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la hora');
+    }
+  }
+
+  async function guardarClave() {
+    setSavingKey(true);
+    setAiError(null);
+    try {
+      // Se comprueba contra la API antes de guardarla: así nadie pega una clave rota y se entera
+      // más tarde, en mitad de un registro de tiempo.
+      const resultado = await window.api.saveAiKey(aiKey.trim());
+      setAi({ available: true, configured: true, key: resultado.key });
+      setAiKey('');
+      if (!resultado.encrypted) {
+        setAiError(
+          'Guardada, pero este equipo no ofrece cifrado del sistema: queda en texto plano.',
+        );
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'No se pudo guardar la clave');
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  async function borrarClave() {
+    setAiError(null);
+    try {
+      await window.api.clearAiKey();
+      setAi({ available: false, configured: false });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'No se pudo borrar la clave');
     }
   }
 
@@ -221,8 +258,8 @@ export default function SettingsModal({ onClose }: Props) {
                   <strong>Asistencia de IA</strong>
                   <span>
                     Redacta descripciones, sugiere a qué tarea pertenece un tiempo suelto, resume
-                    la semana y ayuda con el triaje de tickets. Usa la clave guardada en Odoo y
-                    envía a Claude solo los datos del registro en cuestión.
+                    la semana y ayuda con el triaje de tickets. Envía a Claude solo los datos del
+                    registro en cuestión, y nada si la apagas.
                   </span>
                 </div>
                 <input
@@ -233,6 +270,58 @@ export default function SettingsModal({ onClose }: Props) {
                   onChange={() => toggle('aiEnabled')}
                 />
               </label>
+
+              {settings.aiEnabled && (
+                <div className="setting-row ai-key-row">
+                  <div className="setting-text">
+                    <strong>
+                      <IconSparkle size={13} /> Tu clave de Claude
+                    </strong>
+                    <span>
+                      Cada persona usa la suya. Se guarda cifrada en este equipo, nunca en Odoo ni
+                      en el instalador. Se crea en console.anthropic.com → API Keys.
+                    </span>
+                  </div>
+
+                  {ai?.configured ? (
+                    <div className="ai-key-saved">
+                      <span className="pill is-brand">
+                        <IconCheck size={12} />
+                        Guardada {ai.key ? `(${ai.key})` : ''}
+                      </span>
+                      <button className="btn-secondary btn-sm" onClick={borrarClave}>
+                        Quitar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="ai-key-form">
+                      <input
+                        type="password"
+                        placeholder="sk-ant-..."
+                        value={aiKey}
+                        onChange={(e) => setAiKey(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-label="Clave de la API de Claude"
+                      />
+                      <button
+                        className="btn-secondary btn-sm"
+                        onClick={guardarClave}
+                        disabled={savingKey || aiKey.trim().length < 10}
+                      >
+                        {savingKey ? 'Comprobando...' : 'Guardar'}
+                      </button>
+                    </div>
+                  )}
+
+                  {aiError && (
+                    <div className="alert alert-danger ai-key-error">
+                      <IconAlert size={15} />
+                      <span>{aiError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <label className="setting-row">
                 <div className="setting-text">

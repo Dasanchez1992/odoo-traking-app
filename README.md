@@ -31,6 +31,24 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - **Inicio automático:** disponible en Windows y macOS (`app.setLoginItemSettings`). En Linux la
   opción aparece deshabilitada.
 
+### Asistencia de IA
+
+Opcional y apagable. Cada persona guarda **su propia** clave de la API de Claude en
+Configuración; se cifra con `safeStorage` del sistema operativo en el equipo de cada quien
+(`ai-key.dat` en la carpeta de datos), nunca viaja en el instalador ni se guarda en Odoo. Al
+guardarla se comprueba contra la API listando modelos, que no consume tokens.
+
+Cuatro usos, todos con revisión humana antes de que algo llegue a Odoo:
+
+- Redactar la descripción de la hoja de horas al registrar el tiempo.
+- Sugerir a qué tarea pertenece un registro de «tiempo sin tarea».
+- Resumir la semana por proyecto, para enviar al cliente.
+- Triaje de un ticket: resumen, prioridad sugerida, primeros pasos y tickets parecidos.
+
+Los dos primeros usan `claude-haiku-5-5` y los dos últimos `claude-sonnet-5-5`. A Claude solo se
+le envían los datos del registro concreto: nombre de tarea o ticket, proyecto, duración y las
+descripciones anteriores de ese mismo registro.
+
 ### El nombre anterior
 
 La aplicación se llamaba **Elideysi** hasta la versión 1.7.0. El `appId`
