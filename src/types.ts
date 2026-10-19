@@ -337,6 +337,15 @@ export interface ElectronApi {
     minutes: number;
     notes?: string;
   }) => Promise<string>;
+  draftNote: (payload: {
+    kind: RecordKind;
+    title: string;
+    parentName?: string | null;
+    stageName?: string | null;
+    isNote: boolean;
+    notes?: string;
+    history?: string[];
+  }) => Promise<string>;
   suggestTaskForLine: (payload: {
     lineId: number;
     description: string;

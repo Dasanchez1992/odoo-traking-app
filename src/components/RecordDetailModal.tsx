@@ -55,6 +55,7 @@ export default function RecordDetailModal({
   const [aiOk, setAiOk] = useState(false);
   const [triage, setTriage] = useState<TicketTriage | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [drafting, setDrafting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -71,12 +72,11 @@ export default function RecordDetailModal({
   }, [kind, id, parentId]);
 
   useEffect(() => {
-    if (kind !== 'ticket') return;
     window.api
       .getAiStatus()
       .then((estado) => setAiOk(estado.available))
       .catch(() => setAiOk(false));
-  }, [kind]);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -96,6 +96,30 @@ export default function RecordDetailModal({
     } catch (err) {
       setStageId(anterior);
       setError(err instanceof Error ? err.message : 'No se pudo cambiar la etapa');
+    }
+  }
+
+  async function handleDraft() {
+    setDrafting(true);
+    setError(null);
+    try {
+      const texto = await window.api.draftNote({
+        kind,
+        title,
+        parentName,
+        stageName: stages.find((e) => e.id === stageId)?.name ?? null,
+        isNote,
+        notes: body.trim() || undefined,
+        // El hilo da contexto: lo que ya está escrito no hay que repetirlo.
+        history: messages.slice(0, 3).map((m) => plainText(m.body || '')).filter(Boolean),
+      });
+      setBody(texto);
+      // Si la reescritura se llevó por delante una mención, deja de contar.
+      setMentions((actuales) => actuales.filter((m) => texto.includes(`@${m.name}`)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo redactar el texto');
+    } finally {
+      setDrafting(false);
     }
   }
 
@@ -267,6 +291,22 @@ export default function RecordDetailModal({
           <div className="field">
             <div className="task-detail-message-head">
               <span className="field-label">Mensaje</span>
+              {aiOk && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={handleDraft}
+                  disabled={saving || drafting}
+                  title={
+                    body.trim()
+                      ? 'Reescribir a partir de lo que ya escribiste'
+                      : 'Proponer un texto a partir de la tarea y su historial'
+                  }
+                >
+                  <IconSparkle size={13} />
+                  {drafting ? 'Redactando...' : body.trim() ? 'Mejorar' : 'Redactar'}
+                </button>
+              )}
               <div className="segmented">
                 <button
                   className={isNote ? 'is-active' : ''}

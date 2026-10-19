@@ -235,7 +235,37 @@ async function triageTicket({ ticket, similar }) {
   });
 }
 
-// 5. Resumen de una reunión a partir de su texto ----------------------------------------------
+// 5. Nota o mensaje para el historial de una tarea o ticket -----------------------------------
+
+async function draftRecordNote({ kind, title, parentName, stageName, isNote, notes, history = [] }) {
+  const contexto = [
+    `${kind === 'ticket' ? 'Ticket' : 'Tarea'}: ${title}`,
+    parentName ? `${kind === 'ticket' ? 'Equipo' : 'Proyecto'}: ${parentName}` : null,
+    stageName ? `Etapa: ${stageName}` : null,
+    history.length ? `Últimos mensajes del historial:\n- ${history.join('\n- ')}` : null,
+    notes ? `Apuntes de la persona: ${notes}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return ask({
+    model: MODELO_CORTO,
+    maxTokens: 400,
+    effort: 'low',
+    system:
+      'Redactas mensajes del historial de tareas y tickets de Odoo en una consultora. Devuelves ' +
+      'una o dos frases en español neutro, concretas y sin saludos ni despedidas. ' +
+      (isNote
+        ? 'Es una nota interna: tono directo entre compañeros, puede usar términos técnicos.'
+        : 'Es un mensaje que leerán los seguidores, incluido el cliente: tono profesional y sin ' +
+          'jerga interna.') +
+      ' No inventes avances, fechas ni compromisos que no estén en los datos. No escribas ' +
+      'menciones con @: de eso se encarga la persona.',
+    prompt: `${contexto}\n\nEscribe el texto.`,
+  });
+}
+
+// 6. Resumen de una reunión a partir de su texto ----------------------------------------------
 
 async function summarizeMeeting({ title, date, durationMs, transcript }) {
   const minutos = Math.round((durationMs || 0) / 60000);
@@ -266,4 +296,5 @@ module.exports = {
   weeklySummary,
   triageTicket,
   summarizeMeeting,
+  draftRecordNote,
 };

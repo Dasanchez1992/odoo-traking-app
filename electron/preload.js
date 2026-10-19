@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('api', {
   saveAiKey: (key) => ipcRenderer.invoke('ai:save-key', key),
   clearAiKey: () => ipcRenderer.invoke('ai:clear-key'),
   draftDescription: (payload) => ipcRenderer.invoke('ai:draft-description', payload),
+  draftNote: (payload) => ipcRenderer.invoke('ai:draft-note', payload),
   suggestTaskForLine: (payload) => ipcRenderer.invoke('ai:suggest-task', payload),
   getWeeklySummary: () => ipcRenderer.invoke('ai:weekly-summary'),
   triageTicket: (ticketId) => ipcRenderer.invoke('ai:triage-ticket', ticketId),

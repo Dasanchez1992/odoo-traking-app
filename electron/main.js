@@ -640,6 +640,11 @@ ipcMain.handle('ai:draft-description', async (_event, payload = {}) => {
   });
 });
 
+ipcMain.handle('ai:draft-note', async (_event, payload = {}) => {
+  requireAi();
+  return ai.draftRecordNote(payload);
+});
+
 ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectId, projectName, date } = {}) => {
   const c = requireAi();
   const tasks = await odooService.fetchProjectTasks(c, projectId);
