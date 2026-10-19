@@ -53,7 +53,13 @@ export default function SettingsModal({ onClose }: Props) {
   }, [onClose]);
 
   async function toggle(
-    key: 'startAtLogin' | 'remindersEnabled' | 'floatingWidget' | 'autoAttendance' | 'showReleaseNotes',
+    key:
+      | 'startAtLogin'
+      | 'remindersEnabled'
+      | 'floatingWidget'
+      | 'autoAttendance'
+      | 'showReleaseNotes'
+      | 'aiEnabled',
   ) {
     if (!settings) return;
     setSaving(true);
@@ -207,6 +213,24 @@ export default function SettingsModal({ onClose }: Props) {
                   checked={settings.floatingWidget}
                   disabled={saving}
                   onChange={() => toggle('floatingWidget')}
+                />
+              </label>
+
+              <label className="setting-row">
+                <div className="setting-text">
+                  <strong>Asistencia de IA</strong>
+                  <span>
+                    Redacta descripciones, sugiere a qué tarea pertenece un tiempo suelto, resume
+                    la semana y ayuda con el triaje de tickets. Usa la clave guardada en Odoo y
+                    envía a Claude solo los datos del registro en cuestión.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  checked={settings.aiEnabled}
+                  disabled={saving}
+                  onChange={() => toggle('aiEnabled')}
                 />
               </label>
 

@@ -3,6 +3,7 @@ import { ProductivityData } from '../types';
 import { ecuadorDateKey, parseOdooDateTime, startOfWeekKey } from '../lib/odooDate';
 import DailyHoursChart, { DayDatum } from './DailyHoursChart';
 import ProjectHoursChart, { ProjectDatum } from './ProjectHoursChart';
+import WeeklySummaryCard from './WeeklySummaryCard';
 import { IconAlert, IconClock, IconTasks } from './Icons';
 
 const TOP_PROJECTS = 5;
@@ -167,6 +168,8 @@ export default function ProductivityPanel() {
           </span>
         </div>
       </div>
+
+      <WeeklySummaryCard />
 
       <div className="prod-charts">
         <section className="card chart-card">

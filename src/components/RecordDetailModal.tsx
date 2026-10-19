@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MentionableUser, OdooMessage, RecordKind, TaskStage } from '../types';
+import { MentionableUser, OdooMessage, RecordKind, TaskStage, TicketTriage } from '../types';
 import { formatOdooDateTime } from '../lib/odooDate';
-import { IconAlert, IconCheck, IconClose, IconExternal } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconExternal, IconSparkle } from './Icons';
 import MentionTextarea, { Mention } from './MentionTextarea';
 
 interface Props {
@@ -51,6 +51,11 @@ export default function RecordDetailModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Triaje: solo para tickets, y solo si Odoo tiene la clave de IA.
+  const [aiOk, setAiOk] = useState(false);
+  const [triage, setTriage] = useState<TicketTriage | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
   useEffect(() => {
     Promise.all([
       window.api.getStages(kind, parentId).catch(() => []),
@@ -64,6 +69,14 @@ export default function RecordDetailModal({
       })
       .finally(() => setLoading(false));
   }, [kind, id, parentId]);
+
+  useEffect(() => {
+    if (kind !== 'ticket') return;
+    window.api
+      .getAiStatus()
+      .then((estado) => setAiOk(estado.available))
+      .catch(() => setAiOk(false));
+  }, [kind]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,6 +96,18 @@ export default function RecordDetailModal({
     } catch (err) {
       setStageId(anterior);
       setError(err instanceof Error ? err.message : 'No se pudo cambiar la etapa');
+    }
+  }
+
+  async function handleTriage() {
+    setAnalyzing(true);
+    setError(null);
+    try {
+      setTriage(await window.api.triageTicket(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo analizar el ticket');
+    } finally {
+      setAnalyzing(false);
     }
   }
 
@@ -169,6 +194,75 @@ export default function RecordDetailModal({
             </select>
             <span className="field-hint">El cambio se guarda en Odoo al seleccionarlo.</span>
           </div>
+
+          {kind === 'ticket' && aiOk && (
+            <div className="field triage">
+              <div className="task-detail-message-head">
+                <span className="field-label">Triaje asistido</span>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={handleTriage}
+                  disabled={analyzing}
+                >
+                  <IconSparkle size={13} />
+                  {analyzing ? 'Analizando...' : triage ? 'Volver a analizar' : 'Analizar ticket'}
+                </button>
+              </div>
+
+              {triage && (
+                <div className="triage-box">
+                  <p className="triage-summary">{triage.summary}</p>
+
+                  <p className="triage-priority">
+                    <span className="pill is-brand">
+                      Prioridad sugerida: {'★'.repeat(Number(triage.priority) || 0) || 'sin estrellas'}
+                    </span>
+                    <span>{triage.priorityReason}</span>
+                  </p>
+
+                  {triage.firstSteps.length > 0 && (
+                    <>
+                      <span className="field-label">Primeros pasos</span>
+                      <ol className="triage-steps">
+                        {triage.firstSteps.map((paso, i) => (
+                          <li key={i}>{paso}</li>
+                        ))}
+                      </ol>
+                    </>
+                  )}
+
+                  {triage.relatedIds.length > 0 && (
+                    <>
+                      <span className="field-label">Tickets parecidos ya resueltos</span>
+                      <ul className="triage-related">
+                        {triage.similar
+                          .filter((t) => triage.relatedIds.includes(t.id))
+                          .map((t) => (
+                            <li key={t.id}>
+                              <button
+                                type="button"
+                                className="task-link"
+                                onClick={() => window.api.openTicketInOdoo(t.id).catch(() => {})}
+                              >
+                                <span>{t.name}</span>
+                                <IconExternal size={12} />
+                              </button>
+                              {t.resolution && <p>{t.resolution}</p>}
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+
+                  <span className="field-hint">
+                    Son sugerencias a partir del ticket y del historial; la prioridad se cambia en
+                    Odoo.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="field">
             <div className="task-detail-message-head">
