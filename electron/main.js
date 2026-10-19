@@ -588,20 +588,20 @@ ipcMain.handle('timesheets:delete', async (_event, lineId) => {
   return odooService.deleteTimesheet(requireClient(), lineId);
 });
 
-ipcMain.handle('tasks:stages', async (_event, projectId) => {
-  return odooService.fetchTaskStages(requireClient(), projectId ?? null);
+ipcMain.handle('record:stages', async (_event, kind, parentId) => {
+  return odooService.fetchStages(requireClient(), kind, parentId ?? null);
 });
 
-ipcMain.handle('tasks:set-stage', async (_event, taskId, stageId) => {
-  return odooService.setTaskStage(requireClient(), taskId, stageId);
+ipcMain.handle('record:set-stage', async (_event, kind, recordId, stageId) => {
+  return odooService.setStage(requireClient(), kind, recordId, stageId);
 });
 
-ipcMain.handle('tasks:messages', async (_event, taskId) => {
-  return odooService.fetchTaskMessages(requireClient(), taskId);
+ipcMain.handle('record:messages', async (_event, kind, recordId) => {
+  return odooService.fetchRecordMessages(requireClient(), kind, recordId);
 });
 
-ipcMain.handle('tasks:post-message', async (_event, taskId, payload) => {
-  return odooService.postTaskMessage(requireClient(), taskId, payload || {});
+ipcMain.handle('record:post-message', async (_event, kind, recordId, payload) => {
+  return odooService.postRecordMessage(requireClient(), kind, recordId, payload || {});
 });
 
 ipcMain.handle('users:mentionable', async () => {

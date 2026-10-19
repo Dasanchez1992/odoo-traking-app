@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
-import { MentionableUser, OdooMessage, OdooTask, TaskStage } from '../types';
+import { MentionableUser, OdooMessage, RecordKind, TaskStage } from '../types';
 import { formatOdooDateTime } from '../lib/odooDate';
 import { IconAlert, IconCheck, IconClose, IconExternal } from './Icons';
 import MentionTextarea, { Mention } from './MentionTextarea';
 
 interface Props {
-  task: OdooTask;
+  kind: RecordKind;
+  id: number;
+  title: string;
+  /** Proyecto de la tarea o equipo del ticket: de ahí salen las etapas disponibles. */
+  parentId: number | null;
+  parentName: string;
+  stageId: number | null;
   onClose: () => void;
   onChanged: () => void;
 }
@@ -23,9 +29,18 @@ function plainText(html: string) {
     .trim();
 }
 
-export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
+export default function RecordDetailModal({
+  kind,
+  id,
+  title,
+  parentId,
+  parentName,
+  stageId: stageInicial,
+  onClose,
+  onChanged,
+}: Props) {
   const [stages, setStages] = useState<TaskStage[]>([]);
-  const [stageId, setStageId] = useState<number | null>(task.stage_id ? task.stage_id[0] : null);
+  const [stageId, setStageId] = useState<number | null>(stageInicial);
   const [messages, setMessages] = useState<OdooMessage[]>([]);
   const [users, setUsers] = useState<MentionableUser[]>([]);
   const [mentions, setMentions] = useState<Mention[]>([]);
@@ -37,10 +52,9 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const projectId = task.project_id ? task.project_id[0] : null;
     Promise.all([
-      window.api.getTaskStages(projectId).catch(() => []),
-      window.api.getTaskMessages(task.id).catch(() => []),
+      window.api.getStages(kind, parentId).catch(() => []),
+      window.api.getRecordMessages(kind, id).catch(() => []),
       window.api.getMentionableUsers().catch(() => []),
     ])
       .then(([listaEtapas, listaMensajes, listaUsuarios]) => {
@@ -49,7 +63,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
         setUsers(listaUsuarios);
       })
       .finally(() => setLoading(false));
-  }, [task.id]);
+  }, [kind, id, parentId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -64,7 +78,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
     setStageId(nuevo);
     setError(null);
     try {
-      await window.api.setTaskStage(task.id, nuevo);
+      await window.api.setStage(kind, id, nuevo);
       onChanged();
     } catch (err) {
       setStageId(anterior);
@@ -82,7 +96,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await window.api.postTaskMessage(task.id, {
+      await window.api.postRecordMessage(kind, id, {
         body: texto,
         // El enlace de la mención lo arma el proceso principal: necesita la URL de Odoo.
         mentions,
@@ -91,7 +105,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
 
       setBody('');
       setMentions([]);
-      setMessages(await window.api.getTaskMessages(task.id).catch(() => messages));
+      setMessages(await window.api.getRecordMessages(kind, id).catch(() => messages));
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar el mensaje');
@@ -105,13 +119,18 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="modal-head">
           <div className="task-detail-title">
-            <h2 title={task.name}>{task.name}</h2>
-            <span>{task.project_id ? task.project_id[1] : 'Sin proyecto'}</span>
+            <h2 title={title}>{title}</h2>
+            <span>{parentName}</span>
           </div>
           <div className="task-detail-head-actions">
             <button
               className="btn-ghost btn-sm"
-              onClick={() => window.api.openTaskInOdoo(task.id).catch(() => {})}
+              onClick={() =>
+                (kind === 'ticket'
+                  ? window.api.openTicketInOdoo(id)
+                  : window.api.openTaskInOdoo(id)
+                ).catch(() => {})
+              }
               title="Abrir en Odoo"
             >
               <IconExternal size={14} />
@@ -132,11 +151,11 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
           )}
 
           <div className="field">
-            <label className="field-label" htmlFor="task-stage">
+            <label className="field-label" htmlFor="record-stage">
               Etapa
             </label>
             <select
-              id="task-stage"
+              id="record-stage"
               value={stageId ?? ''}
               onChange={(e) => handleStageChange(Number(e.target.value))}
               disabled={loading || stages.length === 0}
@@ -192,7 +211,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
               Escribe <strong>@</strong> y el nombre para etiquetar a alguien; le llegará el aviso
               en Odoo.{' '}
               {isNote
-                ? 'La nota queda en el historial de la tarea.'
+                ? `La nota queda en el historial ${kind === 'ticket' ? 'del ticket' : 'de la tarea'}.`
                 : 'El mensaje notifica a todos los seguidores.'}
             </span>
           </div>
@@ -212,7 +231,9 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
             {loading ? (
               <p className="notif-empty">Cargando...</p>
             ) : messages.length === 0 ? (
-              <p className="notif-empty">Todavía no hay mensajes en esta tarea.</p>
+              <p className="notif-empty">
+                Todavía no hay mensajes en {kind === 'ticket' ? 'este ticket' : 'esta tarea'}.
+              </p>
             ) : (
               <ul className="message-list">
                 {messages.map((m) => {

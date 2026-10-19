@@ -3,7 +3,7 @@ import { OdooTask, TimerState } from '../types';
 import { formatOdooDateShort, formatOdooDateTime, isPast } from '../lib/odooDate';
 import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
 import { IconAlert, IconChat, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
-import TaskDetailModal from './TaskDetailModal';
+import RecordDetailModal from './RecordDetailModal';
 
 interface Props {
   tasks: OdooTask[];
@@ -198,8 +198,13 @@ export default function TaskList({
       })}
 
       {detailTask && (
-        <TaskDetailModal
-          task={detailTask}
+        <RecordDetailModal
+          kind="task"
+          id={detailTask.id}
+          title={detailTask.name}
+          parentId={detailTask.project_id ? detailTask.project_id[0] : null}
+          parentName={detailTask.project_id ? detailTask.project_id[1] : 'Sin proyecto'}
+          stageId={detailTask.stage_id ? detailTask.stage_id[0] : null}
           onClose={() => setDetailTask(null)}
           onChanged={onTaskChanged}
         />

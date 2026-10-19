@@ -68,6 +68,9 @@ export interface UnassignedTimesheet {
   project_id: [number, string] | false;
 }
 
+/** Registros de Odoo que la app deja comentar y cambiar de etapa. */
+export type RecordKind = 'task' | 'ticket';
+
 export interface TaskStage {
   id: number;
   name: string;
@@ -260,11 +263,16 @@ export interface ElectronApi {
   assignTimesheetTask: (lineId: number, taskId: number) => Promise<{ id: number; taskId: number }>;
   deleteTimesheet: (lineId: number) => Promise<{ id: number }>;
 
-  getTaskStages: (projectId: number | null) => Promise<TaskStage[]>;
-  setTaskStage: (taskId: number, stageId: number) => Promise<{ stage_id: [number, string] | false }>;
-  getTaskMessages: (taskId: number) => Promise<OdooMessage[]>;
-  postTaskMessage: (
-    taskId: number,
+  getStages: (kind: RecordKind, parentId: number | null) => Promise<TaskStage[]>;
+  setStage: (
+    kind: RecordKind,
+    recordId: number,
+    stageId: number,
+  ) => Promise<{ stage_id: [number, string] | false }>;
+  getRecordMessages: (kind: RecordKind, recordId: number) => Promise<OdooMessage[]>;
+  postRecordMessage: (
+    kind: RecordKind,
+    recordId: number,
     payload: {
       body: string;
       mentions?: { partnerId: number; name: string }[];

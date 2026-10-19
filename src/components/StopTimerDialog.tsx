@@ -26,9 +26,9 @@ export default function StopTimerDialog({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  // Nota opcional en el historial de la tarea. Solo tiene sentido con tareas: un ticket o un
-  // tiempo sin tarea no tienen dónde dejarla.
-  const admiteNota = timer.kind === 'task';
+  // Nota opcional en el historial del registro. El tiempo sin tarea no tiene dónde dejarla.
+  const admiteNota = timer.kind === 'task' || timer.kind === 'ticket';
+  const esTicket = timer.kind === 'ticket';
   const [withNote, setWithNote] = useState(false);
   const [note, setNote] = useState('');
   const [mentions, setMentions] = useState<Mention[]>([]);
@@ -102,7 +102,11 @@ export default function StopTimerDialog({
     const texto = note.trim();
     if (withNote && texto) {
       try {
-        await window.api.postTaskMessage(timer.taskId, { body: texto, mentions, isNote });
+        await window.api.postRecordMessage(timer.kind === 'ticket' ? 'ticket' : 'task', timer.taskId, {
+          body: texto,
+          mentions,
+          isNote,
+        });
       } catch (err) {
         setNoteFailed(true);
         setError(
@@ -226,13 +230,15 @@ export default function StopTimerDialog({
                   onChange={(e) => setWithNote(e.target.checked)}
                   disabled={saving || timeSaved}
                 />
-                Dejar también una nota en la tarea
+                Dejar también una nota en {esTicket ? 'el ticket' : 'la tarea'}
               </label>
 
               {withNote && (
                 <>
                   <div className="task-detail-message-head">
-                    <span className="field-label">Para el historial de la tarea</span>
+                    <span className="field-label">
+                      Para el historial {esTicket ? 'del ticket' : 'de la tarea'}
+                    </span>
                     <div className="segmented">
                       <button
                         type="button"

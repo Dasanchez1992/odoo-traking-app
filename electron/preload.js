@@ -18,10 +18,11 @@ contextBridge.exposeInMainWorld('api', {
   assignTimesheetTask: (lineId, taskId) => ipcRenderer.invoke('timesheets:assign', lineId, taskId),
   deleteTimesheet: (lineId) => ipcRenderer.invoke('timesheets:delete', lineId),
 
-  getTaskStages: (projectId) => ipcRenderer.invoke('tasks:stages', projectId),
-  setTaskStage: (taskId, stageId) => ipcRenderer.invoke('tasks:set-stage', taskId, stageId),
-  getTaskMessages: (taskId) => ipcRenderer.invoke('tasks:messages', taskId),
-  postTaskMessage: (taskId, payload) => ipcRenderer.invoke('tasks:post-message', taskId, payload),
+  getStages: (kind, parentId) => ipcRenderer.invoke('record:stages', kind, parentId),
+  setStage: (kind, recordId, stageId) => ipcRenderer.invoke('record:set-stage', kind, recordId, stageId),
+  getRecordMessages: (kind, recordId) => ipcRenderer.invoke('record:messages', kind, recordId),
+  postRecordMessage: (kind, recordId, payload) =>
+    ipcRenderer.invoke('record:post-message', kind, recordId, payload),
   getMentionableUsers: () => ipcRenderer.invoke('users:mentionable'),
 
   listActivities: () => ipcRenderer.invoke('activities:list'),

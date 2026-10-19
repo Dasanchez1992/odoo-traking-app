@@ -145,25 +145,6 @@ async function fetchAssignedTickets(client) {
 }
 
 // Etapas disponibles para una tarea: en Odoo dependen del proyecto al que pertenece.
-async function fetchTaskStages(client, projectId) {
-  const domain = projectId ? [['project_ids', 'in', [projectId]]] : [];
-  return client.execute_kw(
-    'project.task.type',
-    'search_read',
-    [domain, ['name', 'sequence', 'fold']],
-    { order: 'sequence asc' },
-  );
-}
-
-async function setTaskStage(client, taskId, stageId) {
-  if (!Number.isInteger(taskId) || !Number.isInteger(stageId)) {
-    throw new Error('Tarea o etapa inválida');
-  }
-  await client.execute_kw('project.task', 'write', [[taskId], { stage_id: stageId }]);
-  const [task] = await client.execute_kw('project.task', 'read', [[taskId], ['stage_id', 'state']]);
-  return task;
-}
-
 // Usuarios internos a los que se puede mencionar; los de portal quedan fuera.
 async function fetchMentionableUsers(client) {
   try {
@@ -184,23 +165,6 @@ async function fetchMentionableUsers(client) {
   }
 }
 
-async function fetchTaskMessages(client, taskId, limit = 12) {
-  const messages = await client.execute_kw(
-    'mail.message',
-    'search_read',
-    [
-      [
-        ['model', '=', 'project.task'],
-        ['res_id', '=', taskId],
-        ['message_type', 'in', ['comment', 'email']],
-      ],
-      ['body', 'date', 'author_id', 'subtype_id'],
-    ],
-    { order: 'date desc', limit },
-  );
-  return messages;
-}
-
 function escapeHtml(texto) {
   return String(texto)
     .replace(/&/g, '&amp;')
@@ -218,10 +182,74 @@ function mentionLink(baseUrl, partnerId, name) {
   );
 }
 
-// El chatter de Odoo distingue nota interna (mt_note) de mensaje a seguidores (mt_comment).
-// Las menciones necesitan el enlace en el cuerpo para verse y los partner_ids para notificar.
-async function postTaskMessage(client, taskId, { body, mentions = [], isNote = true }) {
-  if (!Number.isInteger(taskId)) throw new Error('Tarea inválida');
+// Los dos modelos que la app deja comentar. La lista es blanca a propósito: el renderer
+// pide por tipo, no por nombre de modelo, así que no puede escribir en cualquier sitio.
+const CHATTER_MODELS = { task: 'project.task', ticket: 'helpdesk.ticket' };
+
+function chatterModel(kind) {
+  const model = CHATTER_MODELS[kind];
+  if (!model) throw new Error(`Tipo de registro no admitido: ${kind}`);
+  return model;
+}
+
+// Etapas disponibles. En tareas dependen del proyecto; en tickets, del equipo de asistencia.
+async function fetchStages(client, kind, parentId) {
+  if (kind === 'ticket') {
+    const intentos = parentId ? [[['team_ids', 'in', [parentId]]], []] : [[]];
+    let lastError;
+    for (const domain of intentos) {
+      try {
+        return await client.execute_kw(
+          'helpdesk.stage',
+          'search_read',
+          [domain, ['name', 'sequence', 'fold']],
+          { order: 'sequence asc' },
+        );
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError;
+  }
+
+  const domain = parentId ? [['project_ids', 'in', [parentId]]] : [];
+  return client.execute_kw(
+    'project.task.type',
+    'search_read',
+    [domain, ['name', 'sequence', 'fold']],
+    { order: 'sequence asc' },
+  );
+}
+
+async function setStage(client, kind, recordId, stageId) {
+  const model = chatterModel(kind);
+  if (!Number.isInteger(recordId) || !Number.isInteger(stageId)) {
+    throw new Error('Registro o etapa inválidos');
+  }
+  await client.execute_kw(model, 'write', [[recordId], { stage_id: stageId }]);
+  const [record] = await client.execute_kw(model, 'read', [[recordId], ['stage_id']]);
+  return record;
+}
+
+async function fetchRecordMessages(client, kind, recordId, limit = 12) {
+  return client.execute_kw(
+    'mail.message',
+    'search_read',
+    [
+      [
+        ['model', '=', chatterModel(kind)],
+        ['res_id', '=', recordId],
+        ['message_type', 'in', ['comment', 'email']],
+      ],
+      ['body', 'date', 'author_id', 'subtype_id'],
+    ],
+    { order: 'date desc', limit },
+  );
+}
+
+async function postRecordMessage(client, kind, recordId, { body, mentions = [], isNote = true }) {
+  const model = chatterModel(kind);
+  if (!Number.isInteger(recordId)) throw new Error('Registro inválido');
   const texto = (body || '').trim();
   if (!texto) throw new Error('El mensaje está vacío');
 
@@ -230,7 +258,7 @@ async function postTaskMessage(client, taskId, { body, mentions = [], isNote = t
   const enlaces = validas.map((m) => mentionLink(baseUrl, m.partnerId, m.name)).join(' ');
   const cuerpo = escapeHtml(texto).replace(/\n/g, '<br/>');
 
-  return client.execute_kw('project.task', 'message_post', [[taskId]], {
+  return client.execute_kw(model, 'message_post', [[recordId]], {
     body: enlaces ? `${enlaces} ${cuerpo}` : cuerpo,
     partner_ids: validas.map((m) => m.partnerId),
     message_type: 'comment',
@@ -1122,10 +1150,10 @@ module.exports = {
   fetchAssignedTickets,
   fetchActivities,
   completeActivity,
-  fetchTaskStages,
-  setTaskStage,
-  fetchTaskMessages,
-  postTaskMessage,
+  fetchStages,
+  setStage,
+  fetchRecordMessages,
+  postRecordMessage,
   fetchMentionableUsers,
   fetchOverdueTasks,
   fetchProductivity,

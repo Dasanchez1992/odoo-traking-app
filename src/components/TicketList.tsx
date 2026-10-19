@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { OdooTicket, TicketsResult, TimerState } from '../types';
 import { formatOdooDateShort, isPast } from '../lib/odooDate';
 import { formatElapsed, timerElapsedMs, useNow } from '../lib/format';
-import { IconAlert, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
+import { IconAlert, IconChat, IconExternal, IconPlay, IconSearch, IconStop, IconTasks } from './Icons';
+import RecordDetailModal from './RecordDetailModal';
 
 interface Props {
   timers: TimerState[];
@@ -33,6 +34,7 @@ export default function TicketList({
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [detailTicket, setDetailTicket] = useState<OdooTicket | null>(null);
 
   const running = timers.some((t) => t.segmentStartedAt !== null);
   const now = useNow(running && frozenAt === null);
@@ -218,6 +220,14 @@ export default function TicketList({
                 </div>
 
                 <div className="task-action">
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => setDetailTicket(ticket)}
+                    title="Cambiar etapa, dejar notas o etiquetar personas"
+                    aria-label={`Detalle de "${ticket.name}"`}
+                  >
+                    <IconChat size={15} />
+                  </button>
                   {ticketTimer && (
                     <span className={`task-elapsed ${isPaused ? 'is-paused' : ''}`}>
                       {formatElapsed(timerElapsedMs(ticketTimer, displayNow))}
@@ -247,6 +257,19 @@ export default function TicketList({
               </div>
             );
           })}
+
+          {detailTicket && (
+            <RecordDetailModal
+              kind="ticket"
+              id={detailTicket.id}
+              title={detailTicket.name}
+              parentId={detailTicket.team_id ? detailTicket.team_id[0] : null}
+              parentName={detailTicket.team_id ? detailTicket.team_id[1] : 'Sin equipo'}
+              stageId={detailTicket.stage_id ? detailTicket.stage_id[0] : null}
+              onClose={() => setDetailTicket(null)}
+              onChanged={() => {}}
+            />
+          )}
         </>
       )}
     </div>
