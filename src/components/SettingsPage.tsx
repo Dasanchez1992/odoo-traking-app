@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AiStatus, AppSettings, UpdateStatus } from '../types';
-import { IconAlert, IconCheck, IconClose, IconSparkle } from './Icons';
+import { IconAlert, IconBack, IconCheck, IconSparkle } from './Icons';
 
 interface Props {
   onClose: () => void;
@@ -28,7 +28,7 @@ function updateMessage(update: UpdateStatus, version: string) {
   }
 }
 
-export default function SettingsModal({ onClose }: Props) {
+export default function SettingsPage({ onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
   const [version, setVersion] = useState('');
@@ -136,16 +136,19 @@ export default function SettingsModal({ onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="modal-head">
-          <h2>Configuración</h2>
-          <button className="btn-ghost btn-icon" onClick={onClose} aria-label="Cerrar">
-            <IconClose size={16} />
-          </button>
+    <section className="settings-page">
+      <div className="page-head">
+        <div>
+          <h1>Configuración</h1>
+          <p>Ajustes de la aplicación en este equipo.</p>
         </div>
+        <button className="btn-secondary btn-sm" onClick={onClose}>
+          <IconBack size={14} />
+          Volver
+        </button>
+      </div>
 
-        <div className="modal-body">
+      <div className="card settings-card">
           {error && (
             <div className="alert alert-danger">
               <IconAlert size={16} />
@@ -391,9 +394,8 @@ export default function SettingsModal({ onClose }: Props) {
                 avisarte. Para cerrarla por completo, usa «Salir» en el menú de la bandeja.
               </p>
             </>
-          )}
-        </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -3821,3 +3821,25 @@ textarea:focus {
   min-width: 280px;
   max-width: min(380px, 70vw);
 }
+
+/* ============================================================
+   Configuración como pantalla
+   Creció demasiado para un diálogo: dentro de un modal se desbordaba
+   de la ventana y no se podía llegar a las últimas opciones.
+   ============================================================ */
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 760px;
+}
+
+.settings-card {
+  padding: 4px 20px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card .setting-row:last-of-type {
+  border-bottom: none;
+}

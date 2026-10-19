@@ -252,3 +252,11 @@ export function IconSparkle({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconBack({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}

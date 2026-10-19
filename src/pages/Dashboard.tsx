@@ -8,7 +8,7 @@ import ReleaseNotesModal from '../components/ReleaseNotesModal';
 import TaskFilters from '../components/TaskFilters';
 import AttendanceCard from '../components/AttendanceCard';
 import TimerBar from '../components/TimerBar';
-import SettingsModal from '../components/SettingsModal';
+import SettingsPage from '../components/SettingsPage';
 import ProductivityPanel from '../components/ProductivityPanel';
 import StopTimerDialog from '../components/StopTimerDialog';
 import TicketList from '../components/TicketList';
@@ -251,6 +251,10 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
       <main className="app-main">
         <div className="app-content">
+          {showSettings ? (
+            <SettingsPage onClose={() => setShowSettings(false)} />
+          ) : (
+          <>
           <div className="page-head">
             <div>
               <h1>Resumen de hoy</h1>
@@ -500,6 +504,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               />
             </section>
           )}
+          </>
+          )}
         </div>
       </main>
 
@@ -535,8 +541,6 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           onCancel={() => setStopRequestedAt(null)}
         />
       )}
-
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       {releaseNotes && (
         <ReleaseNotesModal
