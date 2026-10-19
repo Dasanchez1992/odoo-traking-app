@@ -3600,3 +3600,45 @@ textarea:focus {
   color: var(--text-subtle);
   border-bottom: 1px solid var(--border);
 }
+
+/* Menciones escribiendo «@» dentro del propio texto. */
+.mention-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.mention-popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Nota opcional al registrar el tiempo. */
+.stop-note {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+
+.stop-note-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}

@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { TimerState } from '../types';
+import { MentionableUser, TimerState } from '../types';
 import { formatElapsed, timerElapsedMs } from '../lib/format';
-import { IconAlert, IconClose, IconStop } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconStop } from './Icons';
+import MentionTextarea, { Mention } from './MentionTextarea';
 
 const MIN_BILLABLE_MINUTES = 5;
 
@@ -25,6 +26,18 @@ export default function StopTimerDialog({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
+  // Nota opcional en el historial de la tarea. Solo tiene sentido con tareas: un ticket o un
+  // tiempo sin tarea no tienen dónde dejarla.
+  const admiteNota = timer.kind === 'task';
+  const [withNote, setWithNote] = useState(false);
+  const [note, setNote] = useState('');
+  const [mentions, setMentions] = useState<Mention[]>([]);
+  const [isNote, setIsNote] = useState(true);
+  const [users, setUsers] = useState<MentionableUser[]>([]);
+  // Si el tiempo ya entró en Odoo, un reintento no debe volver a registrarlo.
+  const [timeSaved, setTimeSaved] = useState(false);
+  const [noteFailed, setNoteFailed] = useState(false);
+
   const medidoMs = timerElapsedMs(timer, stoppedAt);
   // El cronómetro es una propuesta: el usuario ajusta la duración antes de registrarla.
   const [horas, setHoras] = useState(() => Math.floor(medidoMs / 3600000));
@@ -34,6 +47,11 @@ export default function StopTimerDialog({
   const elapsedMinutes = elapsedMs / 60000;
   const appliesMinimum = elapsedMinutes > 0 && elapsedMinutes < MIN_BILLABLE_MINUTES;
   const ajustado = Math.abs(elapsedMs - medidoMs) >= 60000;
+
+  useEffect(() => {
+    if (!withNote || users.length > 0) return;
+    window.api.getMentionableUsers().then(setUsers).catch(() => setUsers([]));
+  }, [withNote, users.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,15 +84,38 @@ export default function StopTimerDialog({
       setError('Indica cuánto tiempo dedicaste a la tarea.');
       return;
     }
+
     setSaving(true);
     setError(null);
     try {
-      await window.api.stopTimer({ key: timer.key, description, stoppedAt, elapsedMs });
-      onRegistered();
+      // El tiempo va primero: es lo que no se puede perder. La nota se publica después.
+      if (!timeSaved) {
+        await window.api.stopTimer({ key: timer.key, description, stoppedAt, elapsedMs });
+        setTimeSaved(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar el tiempo');
       setSaving(false);
+      return;
     }
+
+    const texto = note.trim();
+    if (withNote && texto) {
+      try {
+        await window.api.postTaskMessage(timer.taskId, { body: texto, mentions, isNote });
+      } catch (err) {
+        setNoteFailed(true);
+        setError(
+          `El tiempo quedó registrado, pero la nota no se pudo publicar: ${
+            err instanceof Error ? err.message : 'error desconocido'
+          }`,
+        );
+        setSaving(false);
+        return;
+      }
+    }
+
+    onRegistered();
   }
 
   return (
@@ -176,6 +217,62 @@ export default function StopTimerDialog({
             </span>
           </div>
 
+          {admiteNota && (
+            <div className="field stop-note">
+              <label className="stop-note-toggle">
+                <input
+                  type="checkbox"
+                  checked={withNote}
+                  onChange={(e) => setWithNote(e.target.checked)}
+                  disabled={saving || timeSaved}
+                />
+                Dejar también una nota en la tarea
+              </label>
+
+              {withNote && (
+                <>
+                  <div className="task-detail-message-head">
+                    <span className="field-label">Para el historial de la tarea</span>
+                    <div className="segmented">
+                      <button
+                        type="button"
+                        className={isNote ? 'is-active' : ''}
+                        onClick={() => setIsNote(true)}
+                        disabled={saving}
+                      >
+                        Nota interna
+                      </button>
+                      <button
+                        type="button"
+                        className={!isNote ? 'is-active' : ''}
+                        onClick={() => setIsNote(false)}
+                        disabled={saving}
+                      >
+                        Mensaje
+                      </button>
+                    </div>
+                  </div>
+
+                  <MentionTextarea
+                    rows={2}
+                    placeholder="Qué conviene que sepa el equipo... escribe @ para etiquetar"
+                    value={note}
+                    users={users}
+                    onChange={(texto, lista) => {
+                      setNote(texto);
+                      setMentions(lista);
+                    }}
+                    disabled={saving}
+                  />
+                  <span className="field-hint">
+                    Escribe <strong>@</strong> y el nombre para etiquetar a alguien; le llegará el
+                    aviso en Odoo. Esto es aparte de la descripción de la hoja de horas.
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="alert alert-danger" style={{ marginTop: 14 }}>
               <IconAlert size={16} />
@@ -184,7 +281,24 @@ export default function StopTimerDialog({
           )}
 
           <div className="modal-actions">
-            {confirmDiscard ? (
+            {noteFailed ? (
+              // El tiempo ya está en Odoo: desde aquí solo queda reintentar la nota o salir.
+              <>
+                <span className="modal-confirm">El tiempo ya quedó registrado.</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={onRegistered}
+                  disabled={saving}
+                >
+                  Cerrar sin la nota
+                </button>
+                <button type="submit" className="btn-danger" disabled={saving}>
+                  <IconCheck size={13} />
+                  {saving ? 'Publicando...' : 'Reintentar nota'}
+                </button>
+              </>
+            ) : confirmDiscard ? (
               <>
                 <span className="modal-confirm">Se perderá el tiempo medido.</span>
                 <button

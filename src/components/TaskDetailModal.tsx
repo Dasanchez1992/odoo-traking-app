@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MentionableUser, OdooMessage, OdooTask, TaskStage } from '../types';
 import { formatOdooDateTime } from '../lib/odooDate';
-import { IconAlert, IconCheck, IconClose, IconExternal, IconSearch } from './Icons';
+import { IconAlert, IconCheck, IconClose, IconExternal } from './Icons';
+import MentionTextarea, { Mention } from './MentionTextarea';
 
 interface Props {
   task: OdooTask;
@@ -27,16 +28,13 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
   const [stageId, setStageId] = useState<number | null>(task.stage_id ? task.stage_id[0] : null);
   const [messages, setMessages] = useState<OdooMessage[]>([]);
   const [users, setUsers] = useState<MentionableUser[]>([]);
-  const [mentions, setMentions] = useState<MentionableUser[]>([]);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [showMentionList, setShowMentionList] = useState(false);
+  const [mentions, setMentions] = useState<Mention[]>([]);
 
   const [body, setBody] = useState('');
   const [isNote, setIsNote] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mentionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const projectId = task.project_id ? task.project_id[0] : null;
@@ -60,23 +58,6 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, saving]);
-
-  useEffect(() => {
-    if (!showMentionList) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!mentionRef.current?.contains(event.target as Node)) setShowMentionList(false);
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [showMentionList]);
-
-  const candidatos = useMemo(() => {
-    const q = mentionQuery.trim().toLowerCase();
-    return users
-      .filter((u) => !mentions.some((m) => m.id === u.id))
-      .filter((u) => (q ? u.name.toLowerCase().includes(q) : true))
-      .slice(0, 8);
-  }, [users, mentions, mentionQuery]);
 
   async function handleStageChange(nuevo: number) {
     const anterior = stageId;
@@ -104,9 +85,7 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
       await window.api.postTaskMessage(task.id, {
         body: texto,
         // El enlace de la mención lo arma el proceso principal: necesita la URL de Odoo.
-        mentions: mentions
-          .filter((u) => u.partner_id)
-          .map((u) => ({ partnerId: (u.partner_id as [number, string])[0], name: u.name })),
+        mentions,
         isNote,
       });
 
@@ -193,76 +172,28 @@ export default function TaskDetailModal({ task, onClose, onChanged }: Props) {
               </div>
             </div>
 
-            <textarea
+            <MentionTextarea
               rows={3}
               placeholder={
-                isNote ? 'Nota visible solo para el equipo interno...' : 'Mensaje a los seguidores...'
+                isNote
+                  ? 'Nota visible solo para el equipo interno... escribe @ para etiquetar'
+                  : 'Mensaje a los seguidores... escribe @ para etiquetar'
               }
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              users={users}
+              onChange={(texto, lista) => {
+                setBody(texto);
+                setMentions(lista);
+              }}
               disabled={saving}
             />
 
-            <div className="mention-row" ref={mentionRef}>
-              {mentions.map((u) => (
-                <span className="mention-chip" key={u.id}>
-                  @{u.name}
-                  <button
-                    type="button"
-                    onClick={() => setMentions((m) => m.filter((x) => x.id !== u.id))}
-                    aria-label={`Quitar a ${u.name}`}
-                  >
-                    <IconClose size={11} />
-                  </button>
-                </span>
-              ))}
-
-              <div className="mention-picker">
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  onClick={() => setShowMentionList((v) => !v)}
-                  disabled={users.length === 0}
-                >
-                  <IconSearch size={13} />
-                  Etiquetar personas
-                </button>
-
-                {showMentionList && (
-                  <div className="mention-list">
-                    <input
-                      type="search"
-                      autoFocus
-                      placeholder="Buscar persona..."
-                      value={mentionQuery}
-                      onChange={(e) => setMentionQuery(e.target.value)}
-                    />
-                    {candidatos.length === 0 ? (
-                      <p className="notif-empty">Sin coincidencias.</p>
-                    ) : (
-                      candidatos.map((u) => (
-                        <button
-                          type="button"
-                          className="mention-option"
-                          key={u.id}
-                          onClick={() => {
-                            setMentions((m) => [...m, u]);
-                            setMentionQuery('');
-                          }}
-                        >
-                          {u.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
             <span className="field-hint">
+              Escribe <strong>@</strong> y el nombre para etiquetar a alguien; le llegará el aviso
+              en Odoo.{' '}
               {isNote
-                ? 'La nota queda en el historial de la tarea; a quien etiquetes le llegará igualmente.'
-                : 'El mensaje notifica a todos los seguidores de la tarea.'}
+                ? 'La nota queda en el historial de la tarea.'
+                : 'El mensaje notifica a todos los seguidores.'}
             </span>
           </div>
 
