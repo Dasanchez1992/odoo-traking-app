@@ -848,6 +848,16 @@ ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectI
   return { lineId, ...sugerencia };
 });
 
+ipcMain.handle('ai:team-summary', async (_event, employeeId) => {
+  const c = requireAi();
+  const datos = await odooService.fetchEmployeeWeek(c, employeeId);
+  if (datos.byProject.length === 0) {
+    throw new Error(`${datos.name} no tiene horas registradas esta semana que resumir.`);
+  }
+  const texto = await ai.teamMemberSummary(datos);
+  return { ...datos, text: texto };
+});
+
 ipcMain.handle('ai:weekly-summary', async () => {
   const c = requireAi();
   const datos = await odooService.fetchWeekTimesheets(c);

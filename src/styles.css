@@ -2268,6 +2268,32 @@ textarea:focus {
   color: var(--success-dot);
 }
 
+/* Botón del resumen con IA: al borde derecho de la columna de la persona, igual en cada fila. */
+.team-ai-btn {
+  margin-left: auto;
+  flex: none;
+  opacity: 0.55;
+  transition: opacity 0.12s var(--ease);
+}
+
+.team-row:hover .team-ai-btn,
+.team-ai-btn:focus-visible {
+  opacity: 1;
+}
+
+.summary-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.summary-totals strong {
+  color: var(--text);
+}
+
 .team-person-text {
   display: flex;
   flex-direction: column;

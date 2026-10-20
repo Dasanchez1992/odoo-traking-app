@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('api', {
   draftNote: (payload) => ipcRenderer.invoke('ai:draft-note', payload),
   suggestTaskForLine: (payload) => ipcRenderer.invoke('ai:suggest-task', payload),
   getWeeklySummary: () => ipcRenderer.invoke('ai:weekly-summary'),
+  getTeamMemberSummary: (employeeId) => ipcRenderer.invoke('ai:team-summary', employeeId),
   triageTicket: (ticketId) => ipcRenderer.invoke('ai:triage-ticket', ticketId),
 
   getProjects: () => ipcRenderer.invoke('projects:list'),

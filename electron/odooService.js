@@ -1389,6 +1389,89 @@ async function fetchTicketContext(client, ticketId) {
   };
 }
 
+// La semana de otra persona del equipo, para el resumen de la pestaña Equipo. Lee hojas de
+// horas y asistencias de un empleado concreto: hace falta el mismo permiso que el resto del
+// panel, y si no lo hay, Odoo lo rechaza.
+async function fetchEmployeeWeek(client, employeeId) {
+  const { ecuadorDateKey } = require('./dateUtil');
+  if (!Number.isInteger(employeeId)) throw new Error('Empleado inválido');
+
+  const today = ecuadorDateKey(new Date());
+  const weekStart = mondayOf(today);
+
+  const [empleado] = await client.execute_kw('hr.employee', 'read', [
+    [employeeId],
+    ['name', 'department_id'],
+  ]);
+  if (!empleado) throw new Error('No se encontró ese empleado');
+
+  const lines = await client.execute_kw(
+    'account.analytic.line',
+    'search_read',
+    [
+      [
+        ['employee_id', '=', employeeId],
+        ['date', '>=', weekStart],
+        ['date', '<=', today],
+      ],
+      ['name', 'date', 'unit_amount', 'project_id', 'task_id'],
+    ],
+    { order: 'date asc, id asc', limit: 400 },
+  );
+
+  let workedHours = 0;
+  try {
+    const grupos = await client.execute_kw(
+      'hr.attendance',
+      'read_group',
+      [
+        [
+          ['employee_id', '=', employeeId],
+          ['check_in', '>=', ecuadorDayStartUtc(weekStart)],
+        ],
+        ['worked_hours'],
+        [],
+      ],
+      { lazy: false },
+    );
+    workedHours = grupos[0] ? grupos[0].worked_hours || 0 : 0;
+  } catch {
+    // Sin permiso sobre asistencias el resumen sigue valiendo: solo pierde el contraste.
+    workedHours = 0;
+  }
+
+  const porProyecto = new Map();
+  let loggedHours = 0;
+  lines.forEach((line) => {
+    const id = Array.isArray(line.project_id) ? line.project_id[0] : 0;
+    const nombre = Array.isArray(line.project_id) ? line.project_id[1] : 'Sin proyecto';
+    if (!porProyecto.has(id)) porProyecto.set(id, { name: nombre, hours: 0, entries: [] });
+    const grupo = porProyecto.get(id);
+    const horas = line.unit_amount || 0;
+    grupo.hours += horas;
+    loggedHours += horas;
+    grupo.entries.push({
+      date: line.date,
+      hours: Math.round(horas * 100) / 100,
+      name: line.name || '',
+      task: Array.isArray(line.task_id) ? line.task_id[1] : null,
+    });
+  });
+
+  return {
+    employeeId,
+    name: empleado.name,
+    department: Array.isArray(empleado.department_id) ? empleado.department_id[1] : null,
+    since: weekStart,
+    until: today,
+    loggedHours: Math.round(loggedHours * 100) / 100,
+    workedHours: Math.round(workedHours * 100) / 100,
+    byProject: [...porProyecto.values()]
+      .map((g) => ({ ...g, hours: Math.round(g.hours * 100) / 100 }))
+      .sort((a, b) => b.hours - a.hours),
+  };
+}
+
 // --- Uso de aplicaciones ------------------------------------------------------------------------
 // Cada equipo sube un resumen por día como adjunto suelto (sin registro asociado). Odoo solo deja
 // leer esos adjuntos a quien los creó y a los administradores de Ajustes, así que el detalle de
@@ -1612,6 +1695,7 @@ module.exports = {
   fetchProjectTasks,
   fetchRecentTimesheetNames,
   fetchWeekTimesheets,
+  fetchEmployeeWeek,
   fetchTicketContext,
   fetchUnassignedTimesheets,
   assignTimesheetTask,

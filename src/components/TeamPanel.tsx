@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TeamMember, TeamSummary } from '../types';
 import { formatOdooTime } from '../lib/odooDate';
-import { IconAlert, IconClock, IconRefresh, IconSearch, IconTasks } from './Icons';
+import { IconAlert, IconClock, IconRefresh, IconSearch, IconSparkle, IconTasks } from './Icons';
+import TeamSummaryModal from './TeamSummaryModal';
 import TeamUsage from './TeamUsage';
 
 type SortKey = 'name' | 'firstCheckIn' | 'loggedToday' | 'loggedWeek' | 'coverage';
@@ -32,6 +33,8 @@ export default function TeamPanel({ showTeam }: Props) {
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [aiOk, setAiOk] = useState(false);
+  const [resumen, setResumen] = useState<{ id: number; name: string } | null>(null);
 
   async function load() {
     if (!showTeam) {
@@ -51,6 +54,10 @@ export default function TeamPanel({ showTeam }: Props) {
 
   useEffect(() => {
     load();
+    window.api
+      .getAiStatus()
+      .then((estado) => setAiOk(estado.available))
+      .catch(() => setAiOk(false));
   }, []);
 
   const members = summary?.employees ?? [];
@@ -231,6 +238,16 @@ export default function TeamPanel({ showTeam }: Props) {
                           <strong title={member.name}>{member.name}</strong>
                           {member.department && <span>{member.department}</span>}
                         </div>
+                        {aiOk && (
+                          <button
+                            className="btn-ghost btn-icon team-ai-btn"
+                            onClick={() => setResumen({ id: member.id, name: member.name })}
+                            title={`Resumen de la semana de ${member.name}`}
+                            aria-label={`Resumen de la semana de ${member.name}`}
+                          >
+                            <IconSparkle size={14} />
+                          </button>
+                        )}
                       </div>
 
                       <div className="team-cell">
@@ -262,6 +279,14 @@ export default function TeamPanel({ showTeam }: Props) {
       )}
 
       <TeamUsage members={members} />
+
+      {resumen && (
+        <TeamSummaryModal
+          employeeId={resumen.id}
+          name={resumen.name}
+          onClose={() => setResumen(null)}
+        />
+      )}
     </div>
   );
 }

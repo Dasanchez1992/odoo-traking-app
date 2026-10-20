@@ -182,6 +182,41 @@ async function suggestTaskForTimesheet({ description, projectName, date, tasks }
 
 // 3. Resumen semanal por proyecto -------------------------------------------------------------
 
+// Resumen de la semana de otra persona, para quien lleva el equipo. Mismo material que el
+// resumen propio, pero escrito para quien lo supervisa y no para el cliente.
+async function teamMemberSummary({ name, since, until, loggedHours, workedHours, byProject }) {
+  const detalle = byProject
+    .map((proyecto) => {
+      const entradas = proyecto.entries
+        .map((e) => `  - ${e.date} (${e.hours} h)${e.task ? ` [${e.task}]` : ''}: ${e.name}`)
+        .join('\n');
+      return `${proyecto.name} — ${proyecto.hours} h\n${entradas}`;
+    })
+    .join('\n\n');
+
+  const jornada = workedHours
+    ? `Fichó ${workedHours} h de jornada e imputó ${loggedHours} h en hojas de horas.`
+    : `Imputó ${loggedHours} h en hojas de horas.`;
+
+  return ask({
+    model: MODELO_LARGO,
+    maxTokens: 1600,
+    effort: 'medium',
+    system:
+      'Resumes en qué ha trabajado una persona del equipo durante la semana, a partir de sus ' +
+      'hojas de horas, para quien lleva el equipo. Escribes en español neutro y en pasado. ' +
+      'Empiezas con una frase que diga en qué se le fue la semana. Luego un bloque por ' +
+      'proyecto, con encabezado «Proyecto — N h» y de 1 a 3 viñetas agrupadas por tema, no por ' +
+      'día. Si la diferencia entre jornada fichada y horas imputadas pasa de dos horas, lo ' +
+      'mencionas al final en una línea, sin juzgar a la persona ni suponer por qué. No ' +
+      'inventes tareas, avances ni compromisos que no estén en los datos, y no opines sobre su ' +
+      'rendimiento.',
+    prompt:
+      `Persona: ${name}.\nSemana del ${since} al ${until}.\n${jornada}\n\n` +
+      `Registros de hojas de horas:\n\n${detalle}\n\nEscribe el resumen.`,
+  });
+}
+
 async function weeklySummary({ since, until, byProject }) {
   const detalle = byProject
     .map((proyecto) => {
@@ -305,6 +340,7 @@ async function summarizeMeeting({ title, date, durationMs, transcript }) {
 }
 
 module.exports = {
+  teamMemberSummary,
   setCompanyKey,
   keySource,
   resetAi,

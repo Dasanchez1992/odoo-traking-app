@@ -326,6 +326,21 @@ export interface WeeklySummary {
   text: string;
 }
 
+/** Resumen con IA de la semana de alguien del equipo. */
+export interface TeamMemberSummary {
+  employeeId: number;
+  name: string;
+  department: string | null;
+  since: string;
+  until: string;
+  /** Horas imputadas en hojas de horas. */
+  loggedHours: number;
+  /** Horas de jornada fichadas; 0 si no se pudieron leer. */
+  workedHours: number;
+  byProject: { name: string; hours: number }[];
+  text: string;
+}
+
 export interface TicketTriage {
   summary: string;
   priority: string;
@@ -415,6 +430,7 @@ export interface ElectronApi {
     date: string;
   }) => Promise<TaskSuggestion>;
   getWeeklySummary: () => Promise<WeeklySummary>;
+  getTeamMemberSummary: (employeeId: number) => Promise<TeamMemberSummary>;
   triageTicket: (ticketId: number) => Promise<TicketTriage>;
 
   getProjects: () => Promise<OdooProject[]>;
