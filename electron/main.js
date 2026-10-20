@@ -23,6 +23,7 @@ const { createReminderScheduler } = require('./reminders');
 const { createAutoAttendanceScheduler } = require('./autoAttendance');
 const { pendingReleaseNotes } = require('./releaseNotes');
 const { attachContextMenu } = require('./contextMenu');
+const linuxAutostart = require('./linuxAutostart');
 const recordings = require('./recordingStore');
 const usageStore = require('./usageStore');
 const { createUsageTracker } = require('./usageTracker');
@@ -404,8 +405,18 @@ function stopBackgroundRefresh() {
   }
 }
 
+// En Linux hace falta la app instalada: desde el código fuente, el ejecutable es el electron de
+// node_modules y el .desktop no serviría de nada.
+function startAtLoginSupported() {
+  return process.platform !== 'linux' || app.isPackaged;
+}
+
 function applyStartAtLogin(enabled) {
-  if (process.platform === 'linux') return;
+  if (!startAtLoginSupported()) return;
+  if (process.platform === 'linux') {
+    linuxAutostart.set(enabled);
+    return;
+  }
   app.setLoginItemSettings({
     openAtLogin: enabled,
     openAsHidden: true,
@@ -1230,7 +1241,7 @@ ipcMain.handle('attendance:toggle', async () => {
 
 ipcMain.handle('settings:get', async () => ({
   ...settingsStore.read(),
-  startAtLoginSupported: process.platform !== 'linux',
+  startAtLoginSupported: startAtLoginSupported(),
 }));
 
 ipcMain.handle('settings:update', async (_event, patch) => {
@@ -1249,7 +1260,7 @@ ipcMain.handle('settings:update', async (_event, patch) => {
   }
   aplicarRegistroDeUso();
   syncMiniWindow();
-  return { ...next, startAtLoginSupported: process.platform !== 'linux' };
+  return { ...next, startAtLoginSupported: startAtLoginSupported() };
 });
 
 const gotLock = app.requestSingleInstanceLock();

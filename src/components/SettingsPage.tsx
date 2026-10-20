@@ -187,8 +187,8 @@ export default function SettingsPage({ onClose }: Props) {
                   <strong>Iniciar con el sistema</strong>
                   <span>
                     {settings.startAtLoginSupported
-                      ? 'La aplicación se abre automáticamente al iniciar sesión en Windows, minimizada en la bandeja.'
-                      : 'Solo disponible en Windows y macOS.'}
+                      ? 'La aplicación se abre sola al iniciar sesión, minimizada en la bandeja.'
+                      : 'En Linux hace falta tener la app instalada (el paquete .deb); desde el código fuente no se puede.'}
                   </span>
                 </div>
                 <input

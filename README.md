@@ -41,8 +41,11 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
   Configuración.
 - **Tareas muy atrasadas:** las que llevan más de 30 días vencidas se ocultan por defecto para no
   hacer ruido, y se muestran con el botón «Ver atrasadas +1 mes».
-- **Inicio automático:** disponible en Windows y macOS (`app.setLoginItemSettings`). En Linux la
-  opción aparece deshabilitada.
+- **Inicio automático:** en Windows y macOS con `app.setLoginItemSettings`; en Linux escribiendo
+  `~/.config/autostart/elipsys-time.desktop` (respeta `XDG_CONFIG_HOME`), que es lo que leen GNOME,
+  KDE y compañía. Arranca con `--hidden`, o sea minimizada en la bandeja. En Linux hace falta la
+  app instalada: desde el código fuente el ejecutable sería el electron de `node_modules`, así que
+  ahí la opción sigue deshabilitada.
 
 ### Asistencia de IA
 
