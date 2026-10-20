@@ -10,8 +10,9 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Ver métricas de productividad: horas registradas hoy y esta semana, promedio diario, porcentaje de
   imputación (horas en hojas de horas sobre horas de jornada), horas por día de las últimas dos
   semanas y dedicación por proyecto.
-- Recordar los fichajes **15 minutos antes** del horario configurado (de lunes a viernes, hora de
-  Ecuador), o marcarlos automáticamente a esa hora si se activa la opción.
+- Recordar los fichajes **15 minutos antes** del horario configurado y volver a avisar a los 15,
+  45 y 90 minutos mientras sigan sin marcarse (de lunes a viernes, hora de Ecuador), o marcarlos
+  automáticamente a esa hora si se activa la opción.
 - Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
 - Medir el tiempo de uso de aplicaciones y dejar que quien tenga el permiso lo revise por persona
   (día, semana o mes) desde la pestaña Equipo.
@@ -33,9 +34,11 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - **Bandeja del sistema:** cerrar la ventana solo la oculta; la app sigue corriendo para poder emitir
   los recordatorios de fichaje. Para cerrarla del todo se usa «Salir» en el menú de la bandeja.
 - **Recordatorios:** salen un cuarto de hora antes de la hora de entrada y de la de salida que haya
-  en Configuración —las mismas que usa la marcación automática, estén o no activadas—, y se omiten
-  si el fichaje correspondiente ya está hecho (no avisa de entrada si ya fichaste, ni de salida si
-  no estás fichado). Se pueden desactivar en Configuración.
+  en Configuración —las mismas que usa la marcación automática, estén o no activadas—, y se repiten
+  a los 15, 45 y 90 minutos si el fichaje sigue sin hacerse. Se omiten en cuanto está hecho (no
+  avisa de entrada si ya fichaste, ni de salida si no estás fichado) y, si no se puede consultar el
+  estado en Odoo, se manda el aviso previo pero no se insiste. Se pueden desactivar en
+  Configuración.
 - **Tareas muy atrasadas:** las que llevan más de 30 días vencidas se ocultan por defecto para no
   hacer ruido, y se muestran con el botón «Ver atrasadas +1 mes».
 - **Inicio automático:** disponible en Windows y macOS (`app.setLoginItemSettings`). En Linux la

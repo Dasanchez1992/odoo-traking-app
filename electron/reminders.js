@@ -4,6 +4,9 @@ const TRIGGER_WINDOW_MIN = 10;
 // El aviso llega antes de la hora, que es cuando sirve para algo: a la hora en punto ya se te
 // pasó. Mismo margen para entrada y salida.
 const AVISO_ANTES_MIN = 15;
+// Y si se pasa igual, se insiste un rato después. Solo mientras el fichaje siga sin hacer: en
+// cuanto marca, los siguientes se callan solos.
+const AVISOS_DESPUES_MIN = [15, 45, 90];
 
 const HORARIO_POR_DEFECTO = { checkIn: '08:30', checkOut: '17:30' };
 
@@ -21,26 +24,54 @@ function comoHora(minutos) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-/** Los dos avisos del día, calculados desde el horario que tenga configurado cada quien. */
-function buildSchedule(horario = {}, antesMin = AVISO_ANTES_MIN) {
-  const entrada = aMinutos(horario.checkIn, HORARIO_POR_DEFECTO.checkIn);
-  const salida = aMinutos(horario.checkOut, HORARIO_POR_DEFECTO.checkOut);
-
-  return [
+/**
+ * Los avisos del día, calculados desde el horario que tenga configurado cada quien: uno antes de
+ * cada fichaje y unos cuantos después, por si se pasó.
+ */
+function buildSchedule(horario = {}, antesMin = AVISO_ANTES_MIN, despuesMin = AVISOS_DESPUES_MIN) {
+  const fichajes = [
     {
       id: 'check_in',
-      // Si alguien entra a las 00:05, el aviso se queda a las 00:00 en vez de irse al día anterior.
-      at: Math.max(0, entrada - antesMin),
-      title: 'Recordatorio de entrada',
-      body: `Tu entrada es a las ${comoHora(entrada)}. Marca entrada en Elipsys Time.`,
+      at: aMinutos(horario.checkIn, HORARIO_POR_DEFECTO.checkIn),
+      nombre: 'entrada',
+      accion: 'Marca entrada en Elipsys Time.',
     },
     {
       id: 'check_out',
-      at: Math.max(0, salida - antesMin),
-      title: 'Recordatorio de salida',
-      body: `Tu salida es a las ${comoHora(salida)}. Marca salida en Elipsys Time.`,
+      at: aMinutos(horario.checkOut, HORARIO_POR_DEFECTO.checkOut),
+      nombre: 'salida',
+      accion: 'Marca salida en Elipsys Time.',
     },
   ];
+
+  const avisos = [];
+  fichajes.forEach((fichaje) => {
+    avisos.push({
+      id: `${fichaje.id}:antes`,
+      target: fichaje.id,
+      // Si alguien entra a las 00:05, el aviso se queda a las 00:00 en vez de irse al día anterior.
+      at: Math.max(0, fichaje.at - antesMin),
+      insiste: false,
+      title: `Recordatorio de ${fichaje.nombre}`,
+      body: `Tu ${fichaje.nombre} es a las ${comoHora(fichaje.at)}. ${fichaje.accion}`,
+    });
+
+    despuesMin.forEach((minutos) => {
+      const cuando = fichaje.at + minutos;
+      // Lo que se pasaría de medianoche no se avisa: ya sería del día siguiente.
+      if (cuando > 23 * 60 + 59) return;
+      avisos.push({
+        id: `${fichaje.id}:despues:${minutos}`,
+        target: fichaje.id,
+        at: cuando,
+        insiste: true,
+        title: `Sigues sin marcar ${fichaje.nombre}`,
+        body: `Son las ${comoHora(cuando)} y tu ${fichaje.nombre} sigue sin registrar. ${fichaje.accion}`,
+      });
+    });
+  });
+
+  return avisos.sort((a, b) => a.at - b.at);
 }
 
 function ecuadorNow() {
@@ -74,11 +105,13 @@ function createReminderScheduler({
   let timer = null;
   const fired = new Set();
 
-  async function shouldNotify(id) {
+  async function shouldNotify(target, insiste) {
     // Evita ruido: no recordar la entrada si ya fichó, ni la salida si no está fichado.
     const state = await getAttendanceState();
-    if (state === 'unknown') return true;
-    return id === 'check_in' ? state === 'out' : state === 'in';
+    // Sin saber cómo está, el aviso previo se manda igual (no cuesta nada) pero no se insiste:
+    // dar la lata a alguien que a lo mejor ya fichó es peor que callarse.
+    if (state === 'unknown') return !insiste;
+    return target === 'check_in' ? state === 'out' : state === 'in';
   }
 
   async function tick() {
@@ -95,7 +128,7 @@ function createReminderScheduler({
       if (fired.has(key)) continue;
       fired.add(key);
 
-      if (await shouldNotify(entry.id)) {
+      if (await shouldNotify(entry.target, entry.insiste)) {
         notify(entry.title, entry.body);
       }
     }
@@ -116,4 +149,4 @@ function createReminderScheduler({
   };
 }
 
-module.exports = { createReminderScheduler, buildSchedule, AVISO_ANTES_MIN };
+module.exports = { createReminderScheduler, buildSchedule, AVISO_ANTES_MIN, AVISOS_DESPUES_MIN };

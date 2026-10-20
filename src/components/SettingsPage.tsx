@@ -206,8 +206,8 @@ export default function SettingsPage({ onClose }: Props) {
                   <span>
                     Aviso 15 minutos antes de tu horario: a las {quinceAntes(settings.autoCheckIn)}{' '}
                     para la entrada y a las {quinceAntes(settings.autoCheckOut)} para la salida
-                    (hora de Ecuador), de lunes a viernes. Se omite el aviso si ya registraste ese
-                    fichaje. El horario se cambia aquí abajo.
+                    (hora de Ecuador), de lunes a viernes. Si se te pasa, insiste a los 15, 45 y 90
+                    minutos, y se calla en cuanto marcas. El horario se cambia aquí abajo.
                   </span>
                 </div>
                 <input
