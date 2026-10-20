@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { TicketsResult, TimerState } from '../types';
 import TicketList from './TicketList';
-import ScopeSwitch, { Scope } from './ScopeSwitch';
+import Segmented from './Segmented';
+import { Scope } from '../lib/scope';
 import { IconAlert, IconSearch } from './Icons';
 
 const LIMITE = 100;
@@ -63,7 +64,14 @@ export default function AllTicketsPanel({ refreshSignal, scope, onScopeChange, .
           <h2>Todos los tickets</h2>
           <span className="count-chip">{tickets.length}</span>
         </div>
-        <ScopeSwitch value={scope} onChange={onScopeChange} mine="Míos" all="Todos" />
+        <Segmented
+          value={scope}
+          onChange={onScopeChange}
+          options={[
+            { value: 'mias', label: 'Míos' },
+            { value: 'todas', label: 'Todos' },
+          ]}
+        />
       </div>
 
       {error && (

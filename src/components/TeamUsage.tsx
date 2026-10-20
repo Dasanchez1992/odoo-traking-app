@@ -10,15 +10,23 @@ import {
   totalPorApp,
 } from '../lib/usage';
 import { IconAlert, IconChevronDown, IconClock, IconRefresh } from './Icons';
+import Segmented from './Segmented';
 
 const COLORES = ['#2563eb', '#0ea5e9', '#14b8a6', '#f59e0b', '#a855f7', '#ef4444'];
 const COLOR_RESTO = '#94a3b8';
 
+export type VistaEquipo = 'equipo' | 'uso';
+
 interface Props {
-  members: TeamMember[];
+  vista?: VistaEquipo;
+  /** Si falta, es que no hay otra vista a la que ir y no se pinta el selector. */
+  onVistaChange?: (vista: VistaEquipo) => void;
 }
 
-export default function TeamUsage({ members }: Props) {
+export default function TeamUsage({ vista = 'uso', onVistaChange }: Props = {}) {
+  // La lista del equipo solo sirve para decir quién no reportó nada; si no hay permiso de
+  // Empleados, el panel funciona igual sin ella.
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [permitido, setPermitido] = useState<boolean | null>(null);
   const [modo, setModo] = useState<UsageMode>('dia');
   const [fecha, setFecha] = useState(hoyEnEcuador());
@@ -48,6 +56,13 @@ export default function TeamUsage({ members }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rango.from, rango.to]);
 
+  useEffect(() => {
+    window.api
+      .getTeamSummary()
+      .then((resumen) => setMembers(resumen.employees))
+      .catch(() => setMembers([]));
+  }, []);
+
   const gente = useMemo(() => porPersona(datos?.days ?? []), [datos]);
   const equipo = useMemo(() => recortar(totalPorApp(datos?.days ?? []), COLORES.length), [datos]);
   const totalEquipo = equipo.reduce((suma, uso) => suma + uso.seconds, 0);
@@ -67,6 +82,17 @@ export default function TeamUsage({ members }: Props) {
         <div className="panel-title">
           <h2>Uso de aplicaciones</h2>
           {datos && <span className="count-chip">{gente.length}</span>}
+          {onVistaChange && (
+            <Segmented
+              value={vista}
+              onChange={onVistaChange}
+              options={[
+                { value: 'equipo', label: 'Equipo' },
+                { value: 'uso', label: 'Uso de aplicaciones' },
+              ]}
+              label="Qué se mira del equipo"
+            />
+          )}
         </div>
         <button className="btn-secondary btn-sm" onClick={cargar} disabled={cargando}>
           <IconRefresh size={14} />

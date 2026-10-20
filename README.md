@@ -13,7 +13,7 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Recordar los fichajes a las 09:30 y 17:30 (hora de Ecuador), de lunes a viernes, o marcarlos
   automáticamente a la hora configurada si se activa la opción.
 - Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
-- Medir el tiempo de uso de aplicaciones y dejar que los administradores lo revisen por persona
+- Medir el tiempo de uso de aplicaciones y dejar que quien tenga el permiso lo revise por persona
   (día, semana o mes) desde la pestaña Equipo.
 - Arrancar junto con el sistema operativo y quedarse en la bandeja del sistema.
 
@@ -100,10 +100,9 @@ se sube a Odoo cada cinco minutos. Dónde acaba depende de si está instalado el
 En los dos casos cada persona solo puede escribir y leer lo suyo; la app detecta el módulo sola
 (mira `ir.model` como mucho cada 30 minutos) y cambia de sitio sin tocar nada.
 
-La pestaña Equipo muestra el reparto por persona y por aplicación con el permiso que toque según
-el caso; si falta, el panel lo dice en vez de enseñar datos a medias. Con el módulo instalado, la
-pestaña se abre también para quien solo tiene el permiso de revisión, aunque no administre
-Empleados (entonces ve el uso, no el resumen de jornadas).
+Dentro de la pestaña Equipo, un selector en la cabecera alterna entre el resumen de jornadas y
+el uso de aplicaciones, cada uno con su permiso: quien solo tenga el de revisión entra directo al
+uso y no ve el selector, y si falta el permiso el panel lo dice en vez de enseñar datos a medias.
 
 Cada persona ve **lo suyo** en Configuración, con el detalle de lo que se registra y lo que no.
 El interruptor no está ahí: lo decide la empresa desde Odoo.

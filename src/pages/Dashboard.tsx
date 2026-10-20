@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
 import AllTasksPanel from '../components/AllTasksPanel';
-import ScopeSwitch, { Scope } from '../components/ScopeSwitch';
+import Segmented from '../components/Segmented';
+import { Scope } from '../lib/scope';
 import AllTicketsPanel from '../components/AllTicketsPanel';
 import MeetingsPanel from '../components/MeetingsPanel';
 import UnassignedTimeModal from '../components/UnassignedTimeModal';
@@ -390,11 +391,13 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                       Cronómetro activo
                     </span>
                   )}
-                  <ScopeSwitch
+                  <Segmented
                     value={ticketScope}
                     onChange={setTicketScope}
-                    mine="Míos"
-                    all="Todos"
+                    options={[
+                      { value: 'mias', label: 'Míos' },
+                      { value: 'todas', label: 'Todos' },
+                    ]}
                   />
                 </div>
               </div>
@@ -453,7 +456,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
           {tab === 'productivity' && <ProductivityPanel key={refreshSignal} />}
 
           {tab === 'team' && (canManageTeam || canReviewUsage) && (
-            <TeamPanel key={refreshSignal} showTeam={canManageTeam} />
+            <TeamPanel key={refreshSignal} showTeam={canManageTeam} canReviewUsage={canReviewUsage} />
           )}
 
           {tab === 'gantt' && canManageTeam && <TeamGantt key={refreshSignal} />}
@@ -482,7 +485,14 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                     <IconClock size={13} />
                     Tiempo sin tarea
                   </button>
-                  <ScopeSwitch value={taskScope} onChange={setTaskScope} mine="Mías" all="Todas" />
+                  <Segmented
+                    value={taskScope}
+                    onChange={setTaskScope}
+                    options={[
+                      { value: 'mias', label: 'Mías' },
+                      { value: 'todas', label: 'Todas' },
+                    ]}
+                  />
                 </div>
               </div>
 

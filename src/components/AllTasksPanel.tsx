@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { OdooTask, TimerState } from '../types';
 import TaskList from './TaskList';
-import ScopeSwitch, { Scope } from './ScopeSwitch';
+import Segmented from './Segmented';
+import { Scope } from '../lib/scope';
 import { IconAlert, IconSearch } from './Icons';
 
 // Tope que devuelve Odoo por consulta; si se llena, conviene afinar la búsqueda.
@@ -64,7 +65,14 @@ export default function AllTasksPanel({ refreshSignal, scope, onScopeChange, ...
           <h2>Todas las tareas</h2>
           <span className="count-chip">{tasks.length}</span>
         </div>
-        <ScopeSwitch value={scope} onChange={onScopeChange} mine="Mías" all="Todas" />
+        <Segmented
+          value={scope}
+          onChange={onScopeChange}
+          options={[
+            { value: 'mias', label: 'Mías' },
+            { value: 'todas', label: 'Todas' },
+          ]}
+        />
       </div>
 
       {error && (
