@@ -182,6 +182,47 @@ function mentionLink(baseUrl, partnerId, name) {
   );
 }
 
+/**
+ * Cuerpo del mensaje con las menciones ya enlazadas.
+ *
+ * El texto llega con los «@Nombre» tal como se escribieron, así que el enlace sustituye a cada
+ * uno en su sitio. Antes se añadían todos al principio y el nombre acababa saliendo dos veces:
+ * una como enlace y otra como texto suelto.
+ */
+function bodyConMenciones(texto, menciones, baseUrl) {
+  let html = escapeHtml(texto).replace(/\n/g, '<br/>');
+  const enElTexto = [];
+  const sueltas = [];
+
+  // La misma persona elegida dos veces es una sola mención: si no, la segunda no encontraría
+  // su «@Nombre» (ya sustituido) y acabaría repetida al principio.
+  const unicas = [...new Map(menciones.map((m) => [m.partnerId, m])).values()];
+
+  // De nombre más largo a más corto: si no, «@Ana» se comería el principio de «@Ana María».
+  [...unicas]
+    .sort((a, b) => b.name.length - a.name.length)
+    .forEach((mencion) => {
+      const etiqueta = escapeHtml(`@${mencion.name}`);
+      if (!etiqueta || !html.includes(etiqueta)) {
+        sueltas.push(mencion);
+        return;
+      }
+      // Primero un hueco y al final el enlace: así un nombre corto no entra dentro del enlace
+      // que acaba de colocar otro más largo.
+      html = html.split(etiqueta).join(`\u0000m${enElTexto.length}\u0000`);
+      enElTexto.push(mencion);
+    });
+
+  enElTexto.forEach((mencion, i) => {
+    html = html.split(`\u0000m${i}\u0000`).join(mentionLink(baseUrl, mencion.partnerId, mencion.name));
+  });
+
+  // Las que no están escritas (vienen de un selector, o se perdieron al reescribir el texto)
+  // se ponen delante, que es donde las pondría cualquiera.
+  const delante = sueltas.map((m) => mentionLink(baseUrl, m.partnerId, m.name)).join(' ');
+  return delante ? `${delante} ${html}` : html;
+}
+
 // Los dos modelos que la app deja comentar. La lista es blanca a propósito: el renderer
 // pide por tipo, no por nombre de modelo, así que no puede escribir en cualquier sitio.
 const CHATTER_MODELS = { task: 'project.task', ticket: 'helpdesk.ticket' };
@@ -255,11 +296,9 @@ async function postRecordMessage(client, kind, recordId, { body, mentions = [], 
 
   const baseUrl = client.url.replace(/\/+$/, '');
   const validas = (mentions || []).filter((m) => m && Number.isInteger(m.partnerId));
-  const enlaces = validas.map((m) => mentionLink(baseUrl, m.partnerId, m.name)).join(' ');
-  const cuerpo = escapeHtml(texto).replace(/\n/g, '<br/>');
 
   return client.execute_kw(model, 'message_post', [[recordId]], {
-    body: enlaces ? `${enlaces} ${cuerpo}` : cuerpo,
+    body: bodyConMenciones(texto, validas, baseUrl),
     partner_ids: validas.map((m) => m.partnerId),
     message_type: 'comment',
     subtype_xmlid: isNote ? 'mail.mt_note' : 'mail.mt_comment',
@@ -1584,6 +1623,7 @@ module.exports = {
   toggleAttendance,
   attendanceError,
   translateAttendanceWriteError,
+  bodyConMenciones,
   closeOpenAttendance,
   diagnoseAttendance,
 };
