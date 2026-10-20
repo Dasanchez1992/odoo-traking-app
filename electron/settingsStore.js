@@ -19,6 +19,8 @@ const DEFAULTS = {
   trackAppUsage: true,
   // Aviso de novedades tras una actualización automática.
   showReleaseNotes: true,
+  // Dónde se guardó el uso la última vez ('modulo' o 'adjuntos'); tampoco es una preferencia.
+  usageBackend: '',
   // Última versión cuyas novedades ya vio el usuario; no es una preferencia, es estado.
   lastSeenVersion: '',
 };

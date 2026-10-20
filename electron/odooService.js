@@ -1485,6 +1485,7 @@ async function pruneRemoteUsage(client, dias = 180) {
 module.exports = {
   canManageTeam,
   canReviewUsage,
+  usageBackend,
   pushUsageDay,
   fetchTeamUsage,
   pruneRemoteUsage,

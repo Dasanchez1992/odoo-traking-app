@@ -89,6 +89,19 @@ function marcarSincronizado(fecha, cuando = new Date().toISOString()) {
   return dia;
 }
 
+// Para cuando cambia el sitio donde se guarda en Odoo: lo de este equipo se vuelve a subir.
+function marcarTodoPendiente() {
+  const fechas = fechasGuardadas();
+  fechas.forEach((fecha) => {
+    const dia = leerDia(fecha);
+    if (!dia.updatedAt) return;
+    dia.syncedAt = null;
+    sucios.add(fecha);
+  });
+  flush();
+  return fechas.length;
+}
+
 function fechasGuardadas() {
   try {
     return fs
@@ -155,6 +168,7 @@ module.exports = {
   flush,
   leerDia,
   marcarSincronizado,
+  marcarTodoPendiente,
   pendientes,
   rango,
   resumen,

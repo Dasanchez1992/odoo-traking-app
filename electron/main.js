@@ -486,6 +486,20 @@ function rangoValido(from, to, maxDias = 92) {
 
 async function sincronizarUso() {
   if (!client) return;
+
+  try {
+    // Instalar (o quitar) el módulo de Odoo cambia dónde viven los datos: lo que haya en este
+    // equipo se vuelve a subir para no dejar el historial partido en dos sitios.
+    const backend = await odooService.usageBackend(client);
+    const anterior = settingsStore.read().usageBackend;
+    if (anterior !== backend) {
+      if (anterior) usageStore.marcarTodoPendiente();
+      settingsStore.write({ usageBackend: backend });
+    }
+  } catch {
+    // Si no se puede averiguar, se sigue con lo que haya.
+  }
+
   const dias = usageStore.pendientes();
   for (const dia of dias) {
     try {
