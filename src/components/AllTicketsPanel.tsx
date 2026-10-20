@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { TicketsResult, TimerState } from '../types';
 import TicketList from './TicketList';
+import ScopeSwitch, { Scope } from './ScopeSwitch';
 import { IconAlert, IconSearch } from './Icons';
 
 const LIMITE = 100;
@@ -13,9 +14,11 @@ interface Props {
   onRequestStop: () => void;
   frozenAt: number | null;
   refreshSignal: number;
+  scope: Scope;
+  onScopeChange: (valor: Scope) => void;
 }
 
-export default function AllTicketsPanel({ refreshSignal, ...rest }: Props) {
+export default function AllTicketsPanel({ refreshSignal, scope, onScopeChange, ...rest }: Props) {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<TicketsResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,7 @@ export default function AllTicketsPanel({ refreshSignal, ...rest }: Props) {
           <h2>Todos los tickets</h2>
           <span className="count-chip">{tickets.length}</span>
         </div>
+        <ScopeSwitch value={scope} onChange={onScopeChange} mine="Míos" all="Todos" />
       </div>
 
       {error && (
@@ -104,6 +108,7 @@ export default function AllTicketsPanel({ refreshSignal, ...rest }: Props) {
             refreshSignal={refreshSignal}
             tickets={tickets}
             externalLoading={loading}
+            allScope
           />
         </>
       )}

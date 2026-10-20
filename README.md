@@ -22,6 +22,9 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - **Miniatura flotante:** al minimizar la ventana (o cerrarla a la bandeja) con un cronómetro en
   marcha, aparece una ventanita siempre visible sobre las demás aplicaciones, con el tiempo, un botón
   para detener y registrar y otro para volver a la app. Se arrastra desde su franja superior.
+- **Mías o todas:** las pestañas «Mis tareas» y «Tickets» llevan dentro un selector (Mías/Todas,
+  Míos/Todos) para pasar a ver todo lo que hay abierto en Odoo, estés asignado o no, sin salir de
+  la pestaña.
 - **Solo trabajo abierto:** las tareas cerradas (`state` en `1_done` / `1_canceled`) y los tickets con
   fecha de cierre o en etapa plegada no se consultan. Además hay filtros por etapa en ambas listas.
 - **Bandeja del sistema:** cerrar la ventana solo la oculta; la app sigue corriendo para poder emitir

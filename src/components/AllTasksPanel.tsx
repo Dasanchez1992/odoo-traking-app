@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { OdooTask, TimerState } from '../types';
 import TaskList from './TaskList';
+import ScopeSwitch, { Scope } from './ScopeSwitch';
 import { IconAlert, IconSearch } from './Icons';
 
 // Tope que devuelve Odoo por consulta; si se llena, conviene afinar la búsqueda.
@@ -15,9 +16,11 @@ interface Props {
   onTaskChanged: () => void;
   frozenAt: number | null;
   refreshSignal: number;
+  scope: Scope;
+  onScopeChange: (valor: Scope) => void;
 }
 
-export default function AllTasksPanel({ refreshSignal, ...rest }: Props) {
+export default function AllTasksPanel({ refreshSignal, scope, onScopeChange, ...rest }: Props) {
   const [query, setQuery] = useState('');
   const [tasks, setTasks] = useState<OdooTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +64,7 @@ export default function AllTasksPanel({ refreshSignal, ...rest }: Props) {
           <h2>Todas las tareas</h2>
           <span className="count-chip">{tasks.length}</span>
         </div>
+        <ScopeSwitch value={scope} onChange={onScopeChange} mine="Mías" all="Todas" />
       </div>
 
       {error && (

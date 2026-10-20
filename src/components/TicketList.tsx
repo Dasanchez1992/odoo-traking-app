@@ -15,6 +15,8 @@ interface Props {
   /** Si el padre manda los tickets, esta lista solo los pinta: ni consulta ni filtra. */
   tickets?: OdooTicket[];
   externalLoading?: boolean;
+  /** Viendo todos los tickets de Odoo, no solo los propios: cambia el mensaje de lista vacía. */
+  allScope?: boolean;
 }
 
 export default function TicketList({
@@ -26,6 +28,7 @@ export default function TicketList({
   refreshSignal,
   tickets,
   externalLoading,
+  allScope = false,
 }: Props) {
   const controlado = tickets !== undefined;
   const [result, setResult] = useState<TicketsResult | null>(null);
@@ -155,12 +158,16 @@ export default function TicketList({
             {search ? <IconSearch size={20} /> : <IconTasks size={20} />}
           </span>
           <strong>
-            {search || stageFilter !== 'all' ? 'Sin resultados' : 'No tienes tickets abiertos'}
+            {allScope || search || stageFilter !== 'all'
+              ? 'Sin resultados'
+              : 'No tienes tickets abiertos'}
           </strong>
           <span>
-            {search || stageFilter !== 'all'
-              ? 'Ningún ticket coincide con los filtros.'
-              : 'Los tickets de asistencia abiertos a tu nombre aparecerán aquí.'}
+            {allScope
+              ? 'Ningún ticket abierto coincide con la búsqueda.'
+              : search || stageFilter !== 'all'
+                ? 'Ningún ticket coincide con los filtros.'
+                : 'Los tickets de asistencia abiertos a tu nombre aparecerán aquí.'}
           </span>
         </div>
       ) : (

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
 import AllTasksPanel from '../components/AllTasksPanel';
+import ScopeSwitch, { Scope } from '../components/ScopeSwitch';
 import AllTicketsPanel from '../components/AllTicketsPanel';
 import MeetingsPanel from '../components/MeetingsPanel';
 import UnassignedTimeModal from '../components/UnassignedTimeModal';
@@ -68,9 +69,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [focusMode, setFocusMode] = useState(false);
   const [tab, setTab] = useState<
     | 'tasks'
-    | 'all-tasks'
     | 'tickets'
-    | 'all-tickets'
     | 'activities'
     | 'meetings'
     | 'productivity'
@@ -78,6 +77,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     | 'gantt'
   >('tasks');
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
+  const [taskScope, setTaskScope] = useState<Scope>('mias');
+  const [ticketScope, setTicketScope] = useState<Scope>('mias');
   const [canManageTeam, setCanManageTeam] = useState(false);
   const [canReviewUsage, setCanReviewUsage] = useState(false);
 
@@ -323,28 +324,12 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               Mis tareas
             </button>
             <button
-              className={`tab ${tab === 'all-tasks' ? 'is-active' : ''}`}
-              onClick={() => setTab('all-tasks')}
-              role="tab"
-              aria-selected={tab === 'all-tasks'}
-            >
-              Todas las tareas
-            </button>
-            <button
               className={`tab ${tab === 'tickets' ? 'is-active' : ''}`}
               onClick={() => setTab('tickets')}
               role="tab"
               aria-selected={tab === 'tickets'}
             >
               Tickets
-            </button>
-            <button
-              className={`tab ${tab === 'all-tickets' ? 'is-active' : ''}`}
-              onClick={() => setTab('all-tickets')}
-              role="tab"
-              aria-selected={tab === 'all-tickets'}
-            >
-              Todos los tickets
             </button>
             <button
               className={`tab ${tab === 'activities' ? 'is-active' : ''}`}
@@ -392,18 +377,26 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             )}
           </div>
 
-          {tab === 'tickets' && (
+          {tab === 'tickets' && ticketScope === 'mias' && (
             <section className="card">
               <div className="panel-head">
                 <div className="panel-title">
                   <h2>Mis tickets</h2>
                 </div>
-                {timer?.kind === 'ticket' && (
-                  <span className="pill is-brand">
-                    <span className="dot is-live" />
-                    Cronómetro activo
-                  </span>
-                )}
+                <div className="panel-actions">
+                  {timer?.kind === 'ticket' && (
+                    <span className="pill is-brand">
+                      <span className="dot is-live" />
+                      Cronómetro activo
+                    </span>
+                  )}
+                  <ScopeSwitch
+                    value={ticketScope}
+                    onChange={setTicketScope}
+                    mine="Míos"
+                    all="Todos"
+                  />
+                </div>
               </div>
 
               <TicketList
@@ -417,8 +410,10 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             </section>
           )}
 
-          {tab === 'all-tasks' && (
+          {tab === 'tasks' && taskScope === 'todas' && (
             <AllTasksPanel
+              scope={taskScope}
+              onScopeChange={setTaskScope}
               timers={timers}
               onTimersChange={setTimers}
               onTimerStarted={handleTimerStarted}
@@ -429,8 +424,10 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             />
           )}
 
-          {tab === 'all-tickets' && (
+          {tab === 'tickets' && ticketScope === 'todas' && (
             <AllTicketsPanel
+              scope={ticketScope}
+              onScopeChange={setTicketScope}
               timers={timers}
               onTimersChange={setTimers}
               onTimerStarted={handleTimerStarted}
@@ -461,7 +458,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
           {tab === 'gantt' && canManageTeam && <TeamGantt key={refreshSignal} />}
 
-          {tab === 'tasks' && (
+          {tab === 'tasks' && taskScope === 'mias' && (
             <section className="card">
               <div className="panel-head">
                 <div className="panel-title">
@@ -485,6 +482,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
                     <IconClock size={13} />
                     Tiempo sin tarea
                   </button>
+                  <ScopeSwitch value={taskScope} onChange={setTaskScope} mine="Mías" all="Todas" />
                 </div>
               </div>
 
