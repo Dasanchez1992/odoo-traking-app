@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TimerState } from './types';
+import { ActiveRecording, TimerState } from './types';
 import { formatElapsed, timerElapsedMs, useNow } from './lib/format';
 import { IconExpand, IconPause, IconPlay, IconStop } from './components/Icons';
 
@@ -10,34 +10,76 @@ function reportar(accion: string, promesa: Promise<unknown>) {
 
 export default function MiniTimer() {
   const [timer, setTimer] = useState<TimerState | null>(null);
+  const [grabacion, setGrabacion] = useState<ActiveRecording | null>(null);
   const paused = timer?.segmentStartedAt === null;
-  const now = useNow(!paused);
+  // El reloj corre si hay algo que contar: el cronómetro en marcha o la grabación.
+  const now = useNow(!paused || grabacion !== null);
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelado = false;
     const sync = () => {
       window.api
         .getTimerState()
-        .then((list) => {
-          if (cancelled) return;
-          setTimer(list.find((t) => t.segmentStartedAt !== null) ?? list[0] ?? null);
+        .then((lista) => {
+          if (cancelado) return;
+          setTimer(lista.find((t) => t.segmentStartedAt !== null) ?? lista[0] ?? null);
+        })
+        .catch(() => {});
+      window.api
+        .getActiveRecording()
+        .then((actual) => {
+          if (!cancelado) setGrabacion(actual);
         })
         .catch(() => {});
     };
     sync();
     const id = setInterval(sync, 2000);
     return () => {
-      cancelled = true;
+      cancelado = true;
       clearInterval(id);
     };
   }, []);
+
+  const abrir = (
+    <button
+      className="mini-btn"
+      onClick={() => reportar('abrir la app', window.api.showMainWindow())}
+      title="Abrir Elipsys Time"
+      aria-label="Abrir Elipsys Time"
+    >
+      <IconExpand size={13} />
+    </button>
+  );
+
+  // La franja de grabación va arriba y es la misma esté o no el cronómetro debajo.
+  const franja = grabacion && (
+    <div className="mini-rec">
+      <span className="dot is-rec" />
+      <span className="mini-rec-text" title={grabacion.title}>
+        Grabando reunión
+      </span>
+      <span className="mini-rec-time">{formatElapsed(now - grabacion.startedAt)}</span>
+    </div>
+  );
 
   if (!timer) {
     return (
       <div className="mini">
         <div className="mini-drag" />
+        {franja}
         <div className="mini-body">
-          <span className="mini-idle">Sin cronómetro activo</span>
+          {grabacion ? (
+            <>
+              <div className="mini-info">
+                <div className="mini-task" title={grabacion.title}>
+                  {grabacion.title}
+                </div>
+              </div>
+              <div className="mini-actions">{abrir}</div>
+            </>
+          ) : (
+            <span className="mini-idle">Sin cronómetro activo</span>
+          )}
         </div>
       </div>
     );
@@ -46,6 +88,7 @@ export default function MiniTimer() {
   return (
     <div className="mini">
       <div className="mini-drag" />
+      {franja}
       <div className="mini-body">
         <div className="mini-info">
           <div className="mini-task" title={timer.taskName}>
@@ -81,14 +124,7 @@ export default function MiniTimer() {
           >
             <IconStop size={13} />
           </button>
-          <button
-            className="mini-btn"
-            onClick={() => reportar('abrir la app', window.api.showMainWindow())}
-            title="Abrir Elipsys Time"
-            aria-label="Abrir Elipsys Time"
-          >
-            <IconExpand size={13} />
-          </button>
+          {abrir}
         </div>
       </div>
     </div>

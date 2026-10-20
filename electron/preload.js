@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   pushRecordingChunk: (id, chunk) => ipcRenderer.invoke('recordings:chunk', id, chunk),
   finishRecording: (id, durationMs) => ipcRenderer.invoke('recordings:finish', id, durationMs),
   listRecordings: () => ipcRenderer.invoke('recordings:list'),
+  getActiveRecording: () => ipcRenderer.invoke('recordings:active'),
   updateRecording: (id, cambios) => ipcRenderer.invoke('recordings:update', id, cambios),
   deleteRecording: (id) => ipcRenderer.invoke('recordings:delete', id),
   getRecordingAudio: (id) => ipcRenderer.invoke('recordings:audio', id),

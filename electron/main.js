@@ -65,6 +65,8 @@ let refreshTimer = null;
 let usageTracker = null;
 let usageTimer = null;
 let usageError = null;
+// Reunión grabándose ahora mismo, para que la miniatura lo muestre aunque la app esté oculta.
+let grabacionActiva = null;
 // Historial de avisos, para poder revisarlos después de que el aviso del sistema desaparezca.
 let notifications = [];
 let notifiedKeys = new Set();
@@ -235,6 +237,27 @@ function createMiniWindow() {
   });
 }
 
+// La miniatura crece o encoge según lleve cronómetro, grabación o las dos cosas.
+const ALTO_MINI = { cronometro: 96, grabacion: 90, ambas: 142 };
+
+function altoMini() {
+  const conCronometro = timers.length > 0;
+  if (conCronometro && grabacionActiva) return ALTO_MINI.ambas;
+  if (grabacionActiva) return ALTO_MINI.grabacion;
+  return ALTO_MINI.cronometro;
+}
+
+function ajustarAltoMini() {
+  if (!miniWindow || miniWindow.isDestroyed()) return;
+  const alto = altoMini();
+  const marco = miniWindow.getBounds();
+  if (marco.height === alto) return;
+  // Crece hacia arriba: el borde de abajo se queda donde el usuario dejó la ventana.
+  miniWindow.setResizable(true);
+  miniWindow.setBounds({ ...marco, y: marco.y + (marco.height - alto), height: alto });
+  miniWindow.setResizable(false);
+}
+
 function mainWindowHidden() {
   if (!mainWindow || mainWindow.isDestroyed()) return true;
   if (mainWindow.isMinimized() || !mainWindow.isVisible()) return true;
@@ -245,9 +268,14 @@ function mainWindowHidden() {
 // pestaña, diálogo o vista de enfoque estuviera el usuario al minimizar, e igual si el
 // cronómetro arrancó o se reanudó con la ventana ya oculta.
 function syncMiniWindow() {
-  const debeVerse = floatingWidget && timers.length > 0 && mainWindowHidden();
-  if (debeVerse) showMiniWindow();
-  else hideMiniWindow();
+  const hayQueVer = timers.length > 0 || grabacionActiva;
+  const debeVerse = floatingWidget && hayQueVer && mainWindowHidden();
+  if (debeVerse) {
+    ajustarAltoMini();
+    showMiniWindow();
+  } else {
+    hideMiniWindow();
+  }
 }
 
 function showMiniWindow() {
@@ -841,13 +869,25 @@ ipcMain.handle('ai:triage-ticket', async (_event, ticketId) => {
 // Grabación de reuniones. Todo se queda en el equipo: el audio en la carpeta de datos de la
 // app y la ficha en un índice junto a él.
 // ---------------------------------------------------------------------------------------
-ipcMain.handle('recordings:start', async (_event, title) => recordings.start({ title }));
+ipcMain.handle('recordings:start', async (_event, title) => {
+  const ficha = recordings.start({ title });
+  grabacionActiva = { id: ficha.id, title: ficha.title, startedAt: Date.now() };
+  syncMiniWindow();
+  return ficha;
+});
+
+ipcMain.handle('recordings:active', async () => grabacionActiva);
 
 ipcMain.handle('recordings:chunk', async (_event, id, chunk) => recordings.appendChunk(id, chunk));
 
-ipcMain.handle('recordings:finish', async (_event, id, durationMs) =>
-  recordings.finish(id, { durationMs }),
-);
+ipcMain.handle('recordings:finish', async (_event, id, durationMs) => {
+  const ficha = await recordings.finish(id, { durationMs });
+  if (grabacionActiva && grabacionActiva.id === id) {
+    grabacionActiva = null;
+    syncMiniWindow();
+  }
+  return ficha;
+});
 
 ipcMain.handle('recordings:list', async () => recordings.list());
 
@@ -861,7 +901,13 @@ ipcMain.handle('recordings:update', async (_event, id, cambios = {}) => {
   return recordings.update(id, permitido);
 });
 
-ipcMain.handle('recordings:delete', async (_event, id) => recordings.remove(id));
+ipcMain.handle('recordings:delete', async (_event, id) => {
+  if (grabacionActiva && grabacionActiva.id === id) {
+    grabacionActiva = null;
+    syncMiniWindow();
+  }
+  return recordings.remove(id);
+});
 
 ipcMain.handle('recordings:audio', async (_event, id) => recordings.readAudio(id));
 

@@ -293,6 +293,14 @@ export interface Recording {
   summary: string;
 }
 
+/** Reunión que se está grabando ahora mismo. */
+export interface ActiveRecording {
+  id: string;
+  title: string;
+  /** Milisegundos desde época, del reloj de este equipo. */
+  startedAt: number;
+}
+
 export interface AiStatus {
   available: boolean;
   /** Hay una clave propia guardada en este equipo. */
@@ -357,6 +365,7 @@ export interface ElectronApi {
   pushRecordingChunk: (id: string, chunk: ArrayBuffer) => Promise<boolean>;
   finishRecording: (id: string, durationMs: number) => Promise<Recording>;
   listRecordings: () => Promise<Recording[]>;
+  getActiveRecording: () => Promise<ActiveRecording | null>;
   updateRecording: (
     id: string,
     cambios: { title?: string; transcript?: string; summary?: string },
