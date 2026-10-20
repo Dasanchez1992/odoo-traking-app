@@ -124,7 +124,17 @@ export interface TimerContext {
 }
 
 export interface UpdateStatus {
-  state: 'idle' | 'dev' | 'checking' | 'latest' | 'available' | 'downloading' | 'ready' | 'error';
+  state:
+    | 'idle'
+    | 'dev'
+    /** Linux: el paquete .deb se actualiza a mano. */
+    | 'manual'
+    | 'checking'
+    | 'latest'
+    | 'available'
+    | 'downloading'
+    | 'ready'
+    | 'error';
   version?: string;
   percent?: number;
   message?: string;

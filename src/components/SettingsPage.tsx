@@ -12,6 +12,8 @@ function updateMessage(update: UpdateStatus, version: string) {
   switch (update.state) {
     case 'dev':
       return `${actual}Las actualizaciones automáticas solo funcionan en la aplicación instalada.`;
+    case 'manual':
+      return `${actual}En Linux la actualización es manual: descarga el .deb de la versión nueva.`;
     case 'checking':
       return `${actual}Buscando una versión nueva...`;
     case 'latest':

@@ -1,4 +1,4 @@
-name: Publicar release de Windows
+name: Publicar release
 
 on:
   push:
@@ -6,8 +6,59 @@ on:
   workflow_dispatch:
 
 jobs:
+  # El .deb se construye en Linux; el instalador de Windows, en Windows. El segundo trabajo
+  # recoge el paquete del primero y publica los dos juntos en el mismo release.
+  linux:
+    name: Construir el paquete .deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar la interfaz
+        run: npm run build
+
+      - name: Construir el paquete
+        run: npx electron-builder --linux deb --publish never
+
+      - name: Comprobar el paquete
+        run: |
+          ls -lh release/*.deb
+          dpkg-deb --info release/*.deb
+          contenido=$(dpkg-deb --contents release/*.deb)
+          # Que haya entrado todo lo que hace falta para que arranque y se vea en el escritorio.
+          for pieza in 'elipsys-time$' 'app\.asar$' 'libonnxruntime\.so' \
+                       'icons/hicolor/256x256/apps/elipsys-time\.png' \
+                       'applications/elipsys-time\.desktop'; do
+            grep -qE "$pieza" <<< "$contenido" || {
+              echo "Falta en el paquete: $pieza"
+              exit 1
+            }
+          done
+          # Y que no se cuelen los 273 MB de CUDA, que solo sirven con GPU NVIDIA.
+          if grep -q 'libonnxruntime_providers_cuda' <<< "$contenido"; then
+            echo "Se coló el provider de CUDA."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elipsys-time-deb
+          path: release/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
   publicar:
     name: Construir y publicar instalador
+    needs: linux
     runs-on: windows-latest
     # Sin esto, una subida atascada deja el workflow corriendo hasta el límite de 6 horas.
     timeout-minutes: 25
@@ -65,12 +116,23 @@ jobs:
       - name: Construir el instalador
         run: npx electron-builder --win --publish never
 
+      # Después de construir: electron-builder limpia su carpeta de salida al empezar.
+      - name: Traer el paquete .deb
+        uses: actions/download-artifact@v4
+        with:
+          name: elipsys-time-deb
+          path: release
+
       - name: Comprobar los archivos a publicar
         shell: bash
         run: |
           ls -lh release/ || true
           if [ ! -f release/latest.yml ]; then
             echo "No se generó release/latest.yml; sin él la app no detecta actualizaciones."
+            exit 1
+          fi
+          if ! ls release/*.deb >/dev/null 2>&1; then
+            echo "No llegó el paquete .deb del trabajo de Linux."
             exit 1
           fi
 
@@ -93,9 +155,22 @@ jobs:
             echo
             echo "## Instalación"
             echo
+            echo "### Windows"
+            echo
             echo "Descarga \`ElipsysTime-${GITHUB_REF_NAME#v}-setup.exe\`. Windows mostrará un aviso de"
             echo "SmartScreen porque el instalador no está firmado: elige «Más información» y"
             echo "«Ejecutar de todas formas». Si ya tienes la aplicación instalada, se actualiza sola."
+            echo
+            echo "### Linux (Debian y derivados)"
+            echo
+            echo "Descarga \`ElipsysTime-${GITHUB_REF_NAME#v}-amd64.deb\` e instálalo con:"
+            echo
+            echo '```bash'
+            echo "sudo apt install ./ElipsysTime-${GITHUB_REF_NAME#v}-amd64.deb"
+            echo '```'
+            echo
+            echo "En Linux la aplicación **no se actualiza sola**: hay que descargar el paquete de"
+            echo "cada versión nueva."
             if [ -n "$anterior" ]; then
               echo
               echo "**Todos los cambios**: https://github.com/${GITHUB_REPOSITORY}/compare/${anterior}...${GITHUB_REF_NAME}"
@@ -110,6 +185,7 @@ jobs:
           name: elipsys-time-instalador
           path: |
             release/*.exe
+            release/*.deb
             release/latest.yml
           if-no-files-found: error
           retention-days: 30
@@ -145,7 +221,7 @@ jobs:
           tag="${GITHUB_REF_NAME}"
           subir_url=$(gh release view "$tag" --repo "$repo" --json uploadUrl --jq .uploadUrl | sed 's/{.*}//')
 
-          for archivo in release/*.exe release/*.blockmap release/latest.yml; do
+          for archivo in release/*.exe release/*.deb release/*.blockmap release/latest.yml; do
             [ -f "$archivo" ] || continue
             nombre=$(basename "$archivo")
             echo "Subiendo $nombre ($(stat -c %s "$archivo") bytes)..."

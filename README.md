@@ -75,6 +75,10 @@ ventana, ni teclas, ni capturas. En Windows lo averigua un PowerShell de fondo
 segundos; si una política de grupo impide ejecutar el `.ps1`, se reintenta con `-EncodedCommand`.
 Más de cinco minutos sin tocar el equipo (`powerMonitor.getSystemIdleTime`) cuentan como inactivo.
 
+En Linux la medición sale de `xdotool` (hace falta tenerlo instalado y una sesión X11); sin él la
+app lo dice en Configuración y no registra nada. Es una ayuda para desarrollo: el registro está
+pensado para los equipos con Windows.
+
 Cada día se guarda primero en `uso-apps/<fecha>.json` dentro de la carpeta de datos (120 días) y
 se sube a Odoo cada cinco minutos. Dónde acaba depende de si está instalado el módulo
 [`elipsys_app_usage`](addons/elipsys_app_usage/README.md):
@@ -189,12 +193,31 @@ fallar a mitad de la publicación.
 ## Build de producción
 
 ```bash
-npm run build     # compila el frontend a dist/
-npm run dist       # genera el instalador de Windows (nsis) con electron-builder
-npm run dist:linux # genera un AppImage, útil para probar en Linux/WSL
+npm run build      # compila el frontend a dist/
+npm run dist       # instalador de Windows (nsis)
+npm run dist:deb   # paquete .deb para Debian/Ubuntu
+npm run dist:linux # lo mismo que dist:deb, con la configuración de linux por defecto
 ```
 
-El instalador para Windows se genera mejor corriendo `npm run dist` en Windows (o con Wine en Linux). En WSL puro, `npm run dist:linux` es la forma más simple de probar el empaquetado.
+El instalador para Windows se genera mejor corriendo `npm run dist` en Windows (o con Wine en
+Linux). El `.deb` se construye en Linux (en WSL también) y sale en `release/` como
+`ElipsysTime-<versión>-amd64.deb`.
+
+Del paquete de Linux se dejan fuera los *providers* de CUDA y TensorRT de onnxruntime (273 MB que
+solo sirven con GPU NVIDIA; Whisper corre en CPU).
+
+El release de GitHub publica los dos: el `.deb` se construye en un trabajo de Ubuntu y el
+instalador de Windows en otro, que recoge el paquete del primero y los sube juntos. Si falla el
+`.deb`, no se publica nada.
+
+### Instalar el .deb
+
+```bash
+sudo apt install ./ElipsysTime-<versión>-amd64.deb
+```
+
+En Linux la app **no se actualiza sola** (electron-updater no sabe actualizar paquetes `.deb`):
+hay que descargar el paquete de cada versión nueva. En Windows sí.
 
 ## Notas de diseño
 

@@ -22,6 +22,12 @@ function loadUpdater() {
   return autoUpdater;
 }
 
+// El paquete .deb no se actualiza solo: electron-updater no sabe hacerlo y el release tampoco
+// publica el latest-linux.yml, así que buscar actualizaciones solo daría un error.
+function actualizacionAutomatica() {
+  return process.platform === 'win32' || process.platform === 'darwin';
+}
+
 // Solo tiene sentido en una app empaquetada: en desarrollo no hay versión publicada contra
 // la cual comparar y electron-updater falla.
 function setupAutoUpdater({ onNotify, onStatus } = {}) {
@@ -29,6 +35,11 @@ function setupAutoUpdater({ onNotify, onStatus } = {}) {
 
   if (!app.isPackaged) {
     setStatus({ state: 'dev' });
+    return;
+  }
+
+  if (!actualizacionAutomatica()) {
+    setStatus({ state: 'manual' });
     return;
   }
 
@@ -73,6 +84,10 @@ function setupAutoUpdater({ onNotify, onStatus } = {}) {
 async function checkForUpdatesNow() {
   if (!app.isPackaged) {
     setStatus({ state: 'dev' });
+    return lastStatus;
+  }
+  if (!actualizacionAutomatica()) {
+    setStatus({ state: 'manual' });
     return lastStatus;
   }
   const updater = loadUpdater();

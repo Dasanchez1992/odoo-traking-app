@@ -12,7 +12,8 @@
     "start": "electron .",
     "dist": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
-    "check:ipc": "node scripts/check-ipc.js"
+    "check:ipc": "node scripts/check-ipc.js",
+    "dist:deb": "npm run build && electron-builder --linux deb"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -76,7 +77,22 @@
       "shortcutName": "Elipsys Time"
     },
     "linux": {
-      "target": "AppImage"
+      "target": [
+        "deb"
+      ],
+      "icon": "build/icons",
+      "category": "Office",
+      "maintainer": "Elipsys <danilo.sanchez@elipsys.ec>",
+      "synopsis": "Tareas, cronómetro y fichaje sobre Odoo",
+      "description": "Elipsys Time: ver las tareas asignadas en Odoo, registrar el tiempo trabajado, fichar entrada y salida, grabar y resumir reuniones y recibir avisos de tareas caducadas.",
+      "artifactName": "ElipsysTime-${version}-${arch}.${ext}",
+      "files": [
+        "!node_modules/onnxruntime-node/bin/napi-v6/win32/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/arm64/**",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/x64/libonnxruntime_providers_cuda.so",
+        "!node_modules/onnxruntime-node/bin/napi-v6/linux/x64/libonnxruntime_providers_tensorrt.so"
+      ]
     },
     "asarUnpack": [
       "node_modules/@huggingface/transformers/**",
