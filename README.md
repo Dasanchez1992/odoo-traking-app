@@ -82,7 +82,8 @@ se sube a Odoo cada cinco minutos. Dónde acaba depende de si está instalado el
 | | Con el módulo | Sin el módulo |
 | --- | --- | --- |
 | Dónde se guarda | Modelo `elipsys.app.usage` (+ una línea por programa) | Adjunto suelto `elipsys-uso-u<uid>-<fecha>.json`, con el resumen en `description` |
-| Quién lo revisa | Administración de Empleados (`hr.group_hr_manager`) | Administración de Ajustes (`base.group_system`), que es a quien Odoo deja leer los adjuntos sin `res_id` |
+| Quién lo revisa | Quien tenga el permiso «Elipsys Time / Revisar el uso de aplicaciones» | Administración de Ajustes (`base.group_system`), que es a quien Odoo deja leer los adjuntos sin `res_id` |
+| Quién lo enciende | La compañía, en Ajustes › Empleados › Elipsys Time | Siempre encendido |
 | Quién borra lo viejo | Acción planificada diaria del módulo | Cada cliente, lo suyo de más de 180 días |
 | Analítica en Odoo | Empleados › Informes › Uso de aplicaciones | — |
 
@@ -90,8 +91,12 @@ En los dos casos cada persona solo puede escribir y leer lo suyo; la app detecta
 (mira `ir.model` como mucho cada 30 minutos) y cambia de sitio sin tocar nada.
 
 La pestaña Equipo muestra el reparto por persona y por aplicación con el permiso que toque según
-el caso; si falta, el panel lo dice en vez de enseñar datos a medias. Cada persona ve lo suyo en
-Configuración, donde también puede apagar el registro.
+el caso; si falta, el panel lo dice en vez de enseñar datos a medias. Con el módulo instalado, la
+pestaña se abre también para quien solo tiene el permiso de revisión, aunque no administre
+Empleados (entonces ve el uso, no el resumen de jornadas).
+
+Cada persona ve **lo suyo** en Configuración, con el detalle de lo que se registra y lo que no.
+El interruptor no está ahí: lo decide la empresa desde Odoo.
 
 ### El nombre anterior
 
@@ -111,9 +116,9 @@ volver a iniciar sesión.
 - Para fichar sin repartir el grupo «Asistencias → Officer», el módulo
   [`elipsys_app_usage`](addons/elipsys_app_usage/README.md): Odoo 19 crea las líneas de horas
   extra con el usuario en curso y sin ese permiso rechaza la marcación entera.
-- Para revisar el uso de aplicaciones del equipo: con el módulo `elipsys_app_usage` instalado
-  basta **Empleados / Administrador** (el mismo de la pestaña Equipo); sin él hace falta además
-  **Administración / Ajustes** (`base.group_system`).
+- Para revisar el uso de aplicaciones del equipo: con el módulo `elipsys_app_usage` instalado, el
+  permiso **Elipsys Time / Revisar el uso de aplicaciones**; sin él, **Administración / Ajustes**
+  (`base.group_system`).
 
 ## Instalación
 

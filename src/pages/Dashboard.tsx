@@ -79,6 +79,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   >('tasks');
   // La pestaña de equipo solo existe para quien administra Empleados en Odoo.
   const [canManageTeam, setCanManageTeam] = useState(false);
+  const [canReviewUsage, setCanReviewUsage] = useState(false);
 
   // El activo es el único que corre; los demás quedaron en pausa al cambiar de tarea.
   const timer = timers.find((t) => t.segmentStartedAt !== null) ?? timers[0] ?? null;
@@ -138,6 +139,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     // Tras una actualización automática, lo primero es contar qué cambió.
     window.api.getPendingReleaseNotes().then(setReleaseNotes).catch(() => {});
     window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
+    window.api.canReviewUsage().then(setCanReviewUsage).catch(() => setCanReviewUsage(false));
     return () => {
       unsubscribe();
       unsubscribeStop();
@@ -368,7 +370,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             >
               Productividad
             </button>
-            {canManageTeam && (
+            {(canManageTeam || canReviewUsage) && (
               <button
                 className={`tab ${tab === 'team' ? 'is-active' : ''}`}
                 onClick={() => setTab('team')}
@@ -453,7 +455,9 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
 
           {tab === 'productivity' && <ProductivityPanel key={refreshSignal} />}
 
-          {tab === 'team' && canManageTeam && <TeamPanel key={refreshSignal} />}
+          {tab === 'team' && (canManageTeam || canReviewUsage) && (
+            <TeamPanel key={refreshSignal} showTeam={canManageTeam} />
+          )}
 
           {tab === 'gantt' && canManageTeam && <TeamGantt key={refreshSignal} />}
 

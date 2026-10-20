@@ -76,10 +76,11 @@ export default function TeamUsage({ members }: Props) {
 
       {permitido === false ? (
         <div className="empty-state">
-          <strong>Hace falta permiso de administración</strong>
+          <strong>Hace falta el permiso para revisarlo</strong>
           <span>
-            Odoo solo deja leer estos datos a quien tiene el grupo «Administración / Ajustes». Sin
-            él solo se ve el uso propio, en Configuración.
+            En Odoo, el grupo «Elipsys Time / Revisar el uso de aplicaciones» (o, si todavía no
+            está instalado el módulo, «Administración / Ajustes»). Sin él solo se ve el uso
+            propio, en Configuración.
           </span>
         </div>
       ) : (

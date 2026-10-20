@@ -233,7 +233,10 @@ export interface UsageStatus {
   /** El sistema operativo permite saber qué aplicación está en primer plano. */
   supported: boolean;
   running: boolean;
+  /** Si se está registrando. Con el módulo de Odoo instalado, lo decide la compañía. */
   enabled: boolean;
+  /** El interruptor vive en Odoo (módulo instalado), no en este equipo. */
+  managedByOdoo?: boolean;
   reason: string | null;
   lastError: string | null;
   current: { app: string; label: string } | null;
@@ -321,7 +324,6 @@ export interface AppSettings {
   showReleaseNotes: boolean;
   aiEnabled: boolean;
   whisperModel: 'tiny' | 'base' | 'small';
-  trackAppUsage: boolean;
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */
   autoCheckIn: string;

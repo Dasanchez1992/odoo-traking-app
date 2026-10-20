@@ -25,9 +25,11 @@ Lo anterior a 180 días se borra solo con una acción planificada diaria.
     'license': 'LGPL-3',
     'depends': ['hr', 'hr_attendance'],
     'data': [
-        'security/ir.model.access.csv',
+        # Los grupos primero: el csv de permisos se apoya en ellos.
         'security/app_usage_security.xml',
+        'security/ir.model.access.csv',
         'data/ir_cron.xml',
+        'data/usuarios.xml',
         'views/app_usage_views.xml',
         'views/res_config_settings_views.xml',
     ],

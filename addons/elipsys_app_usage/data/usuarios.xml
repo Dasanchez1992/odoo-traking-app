@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Al instalar, el administrador se queda con el permiso para poder repartirlo; a partir
+         de ahí se asigna a mano y una actualización del módulo no lo vuelve a tocar. -->
+    <data noupdate="1">
+        <record id="base.user_admin" model="res.users">
+            <field name="group_ids" eval="[(4, ref('elipsys_app_usage.group_app_usage_reviewer'))]"/>
+        </record>
+    </data>
+</odoo>

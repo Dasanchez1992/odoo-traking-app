@@ -7,6 +7,10 @@
         <field name="arch" type="xml">
             <xpath expr="//app[@name='hr']" position="inside">
                 <block title="Elipsys Time" name="elipsys_time_container" groups="base.group_system">
+                    <setting id="elipsys_track_usage_setting" string="Uso de aplicaciones"
+                             help="Las apps de escritorio miden el tiempo que cada programa pasa en primer plano y lo envían aquí. Quien lo revisa se decide con el permiso «Elipsys Time / Revisar el uso de aplicaciones».">
+                        <field name="elipsys_track_app_usage"/>
+                    </setting>
                     <setting id="elipsys_ai_key_setting" string="Asistencia de IA"
                              help="Clave de API de Claude para toda la plantilla. Si se deja vacía, cada quien pone la suya en la app. La leen todos los usuarios internos desde la app, así que conviene una clave de la empresa con límite de gasto.">
                         <field name="elipsys_ai_api_key" password="True" placeholder="sk-ant-..."/>

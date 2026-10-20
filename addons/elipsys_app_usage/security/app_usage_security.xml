@@ -1,8 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
-        <!-- Las reglas de distintos grupos se suman: quien administra Empleados ve todo, el
-             resto de la plantilla solo lo propio. -->
+        <record id="module_category_elipsys_time" model="ir.module.category">
+            <field name="name">Elipsys Time</field>
+            <field name="description">Permisos de la app de escritorio Elipsys Time.</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="res_groups_privilege_elipsys_time" model="res.groups.privilege">
+            <field name="name">Uso de aplicaciones</field>
+            <field name="sequence">10</field>
+            <field name="category_id" ref="module_category_elipsys_time"/>
+            <field name="description">Quién puede revisar el tiempo de uso de aplicaciones de la plantilla.</field>
+        </record>
+
+        <!-- Permiso propio: quien lo tiene revisa el uso de todo el equipo, en Odoo y en la app.
+             No va atado a los permisos de Empleados a propósito, para poder darlo (o quitarlo)
+             a cada responsable por separado. -->
+        <record id="group_app_usage_reviewer" model="res.groups">
+            <field name="name">Revisar el uso de aplicaciones</field>
+            <field name="sequence">10</field>
+            <field name="privilege_id" ref="res_groups_privilege_elipsys_time"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Ve el tiempo de uso de aplicaciones de toda la plantilla, en el menú Elipsys Time de Odoo y en la pestaña Equipo de la app de escritorio. Sin este permiso cada quien solo ve el suyo.</field>
+        </record>
+
+        <!-- Las reglas de distintos grupos se suman: quien revisa ve todo, el resto de la
+             plantilla solo lo propio. -->
         <record id="rule_app_usage_own" model="ir.rule">
             <field name="name">Uso de aplicaciones: cada quien el suyo</field>
             <field name="model_id" ref="model_elipsys_app_usage"/>
@@ -11,10 +35,10 @@
         </record>
 
         <record id="rule_app_usage_manager" model="ir.rule">
-            <field name="name">Uso de aplicaciones: responsables de Empleados</field>
+            <field name="name">Uso de aplicaciones: quien revisa</field>
             <field name="model_id" ref="model_elipsys_app_usage"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="groups" eval="[(4, ref('group_app_usage_reviewer'))]"/>
         </record>
 
         <record id="rule_app_usage_line_own" model="ir.rule">
@@ -25,10 +49,10 @@
         </record>
 
         <record id="rule_app_usage_line_manager" model="ir.rule">
-            <field name="name">Uso por aplicación: responsables de Empleados</field>
+            <field name="name">Uso por aplicación: quien revisa</field>
             <field name="model_id" ref="model_elipsys_app_usage_line"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="groups" eval="[(4, ref('group_app_usage_reviewer'))]"/>
         </record>
     </data>
 </odoo>

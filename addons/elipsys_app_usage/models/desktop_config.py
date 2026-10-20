@@ -21,4 +21,6 @@ class ElipsysDesktopConfig(models.TransientModel):
         parametros = self.env['ir.config_parameter'].sudo()
         return {
             'aiApiKey': parametros.get_param('elipsys.ai_api_key', default='') or '',
+            # Quien está siendo medido no decide si se mide: esto sale de la compañía.
+            'trackAppUsage': bool(self.env.company.sudo().elipsys_track_app_usage),
         }

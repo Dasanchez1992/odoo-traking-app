@@ -163,20 +163,29 @@
             <field name="search_view_id" ref="view_app_usage_line_search"/>
         </record>
 
+        <!-- Menú propio: quien revisa el uso no tiene por qué administrar Empleados, así que no
+             puede colgar de ese menú. -->
+        <menuitem
+            id="menu_elipsys_root"
+            name="Elipsys Time"
+            web_icon="elipsys_app_usage,static/description/icon.png"
+            groups="group_app_usage_reviewer"
+            sequence="190"/>
+
         <menuitem
             id="menu_app_usage"
             name="Uso de aplicaciones"
-            parent="hr.hr_menu_hr_reports"
+            parent="menu_elipsys_root"
             action="action_app_usage"
-            groups="hr.group_hr_manager"
-            sequence="80"/>
+            groups="group_app_usage_reviewer"
+            sequence="10"/>
 
         <menuitem
             id="menu_app_usage_line"
             name="Tiempo por aplicación"
-            parent="hr.hr_menu_hr_reports"
+            parent="menu_elipsys_root"
             action="action_app_usage_line"
-            groups="hr.group_hr_manager"
-            sequence="81"/>
+            groups="group_app_usage_reviewer"
+            sequence="20"/>
     </data>
 </odoo>

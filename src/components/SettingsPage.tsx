@@ -75,7 +75,6 @@ export default function SettingsPage({ onClose }: Props) {
       | 'floatingWidget'
       | 'autoAttendance'
       | 'showReleaseNotes'
-      | 'trackAppUsage'
       | 'aiEnabled',
   ) {
     if (!settings) return;
@@ -267,49 +266,50 @@ export default function SettingsPage({ onClose }: Props) {
                 />
               </label>
 
-              <label className="setting-row">
-                <div className="setting-text">
-                  <strong>Registrar el uso de aplicaciones</strong>
-                  <span>
-                    Suma el tiempo que cada programa pasa en primer plano y lo envía a Odoo en un
-                    resumen por día. No guarda títulos de ventana, ni teclas, ni capturas de
-                    pantalla. Lo revisan los administradores desde la pestaña Equipo; aquí abajo
-                    ves lo tuyo.
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  className="switch"
-                  checked={settings.trackAppUsage}
-                  disabled={saving}
-                  onChange={() => toggle('trackAppUsage')}
-                />
-              </label>
-
-              {settings.trackAppUsage && uso && (
+              {uso && (
                 <div className="setting-row" style={{ display: 'block' }}>
                   <div className="setting-text">
-                    <strong>Tu uso de hoy</strong>
-                    {uso.supported === false ? (
-                      <span>{uso.reason || 'Este sistema no permite saber qué programa está en primer plano.'}</span>
-                    ) : uso.today.apps.length === 0 ? (
-                      <span>Todavía no hay nada registrado hoy.</span>
-                    ) : (
+                    <strong>Uso de aplicaciones</strong>
+                    <span>
+                      {uso.enabled
+                        ? 'Se registra el tiempo que cada programa pasa en primer plano, y nada más: ni títulos de ventana, ni teclas, ni capturas de pantalla. Quien tenga el permiso para revisarlo lo ve en Odoo y en la pestaña Equipo.'
+                        : 'El registro de uso de aplicaciones está apagado.'}
+                      {uso.managedByOdoo
+                        ? ' Se enciende y se apaga desde Odoo (Ajustes → Empleados → Elipsys Time).'
+                        : ''}
+                    </span>
+
+                    {uso.enabled && uso.supported === false && (
+                      <span>
+                        {uso.reason ||
+                          'Este sistema no permite saber qué programa está en primer plano.'}
+                      </span>
+                    )}
+
+                    {uso.enabled && uso.supported !== false && (
                       <>
-                        <span>
-                          {formatearDuracion(uso.today.activeSeconds)} de actividad y{' '}
-                          {formatearDuracion(uso.today.idleSeconds)} sin tocar el equipo.
-                        </span>
-                        <ul className="usage-legend" style={{ marginTop: 8 }}>
-                          {uso.today.apps.slice(0, 6).map((app) => (
-                            <li key={app.app}>
-                              {app.label}
-                              <em>{formatearDuracion(app.seconds)}</em>
-                            </li>
-                          ))}
-                        </ul>
+                        <strong style={{ marginTop: 10 }}>Tu uso de hoy</strong>
+                        {uso.today.apps.length === 0 ? (
+                          <span>Todavía no hay nada registrado hoy.</span>
+                        ) : (
+                          <>
+                            <span>
+                              {formatearDuracion(uso.today.activeSeconds)} de actividad y{' '}
+                              {formatearDuracion(uso.today.idleSeconds)} sin tocar el equipo.
+                            </span>
+                            <ul className="usage-legend" style={{ marginTop: 8 }}>
+                              {uso.today.apps.slice(0, 6).map((app) => (
+                                <li key={app.app}>
+                                  {app.label}
+                                  <em>{formatearDuracion(app.seconds)}</em>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                       </>
                     )}
+
                     {uso.lastError && <span>No se pudo subir a Odoo: {uso.lastError}</span>}
                   </div>
                 </div>

@@ -1407,9 +1407,11 @@ async function fetchDesktopConfig(client) {
 // Solo quien administra Ajustes puede leer los adjuntos sueltos de los demás; sin ese permiso la
 // búsqueda devolvería únicamente los propios y la pantalla engañaría.
 async function canReviewUsage(client) {
-  // Con el módulo manda su permiso de lectura; sin él, el de los adjuntos sueltos.
-  const grupo =
-    (await usageBackend(client)) === 'modulo' ? 'hr.group_hr_manager' : 'base.group_system';
+  // Con el módulo manda su permiso propio; sin él, el único que Odoo deja leer los adjuntos
+  // sueltos de los demás.
+  const grupo = (await elipsysModuleInstalled(client))
+    ? 'elipsys_app_usage.group_app_usage_reviewer'
+    : 'base.group_system';
   try {
     const resultado = await client.execute_kw('res.users', 'has_group', [[client.uid], grupo]);
     if (typeof resultado === 'boolean') return resultado;

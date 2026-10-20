@@ -19,10 +19,28 @@ adjuntos sueltos, que Odoo solo deja leer a los administradores de Ajustes
 | `elipsys.app.usage.line` | El reparto de ese día por programa. |
 | `elipsys.desktop.config` | Lo que la app lee de Odoo al entrar (la clave de IA). |
 
-Dos entradas en **Empleados › Informes**: «Uso de aplicaciones» (lista, tabla dinámica y gráfico)
-y «Tiempo por aplicación» (tabla dinámica por programa).
+Un menú propio **Elipsys Time** con dos entradas: «Uso de aplicaciones» (lista, tabla dinámica y
+gráfico) y «Tiempo por aplicación» (tabla dinámica por programa). Cuelga de su propio menú y no de
+Empleados a propósito: quien revisa el uso no tiene por qué administrar RRHH.
 
 Una acción planificada diaria borra lo anterior a 180 días.
+
+### El permiso
+
+**Elipsys Time → Uso de aplicaciones → «Revisar el uso de aplicaciones»**
+(`elipsys_app_usage.group_app_usage_reviewer`), que se asigna en la ficha de cada usuario. Quien
+lo tiene ve el uso de toda la plantilla, en el menú de Odoo y en la pestaña Equipo de la app;
+quien no, solo el suyo. No va atado a los permisos de Empleados, así que se le puede dar al
+responsable de un área sin convertirlo en administrador de RRHH.
+
+Al instalar, el administrador se lo queda para poder repartirlo.
+
+### El interruptor
+
+**Ajustes › Empleados › Elipsys Time → «Registrar el uso de aplicaciones»**, que es un campo de la
+compañía (`res.company.elipsys_track_app_usage`, encendido por defecto). Al apagarlo, las apps
+dejan de medir en cuanto se conectan. **No se puede apagar desde la app**: quien está siendo
+medido no decide si se mide.
 
 ## 2. Fichaje sin permisos de más
 
@@ -61,7 +79,7 @@ asistencia de IA queda apagada.
 ## Permisos
 
 - Toda la plantilla (`base.group_user`): crea y actualiza **su propio** día, y solo ve el suyo.
-- Administración de Empleados (`hr.group_hr_manager`): ve y borra el de todo el equipo.
+- «Revisar el uso de aplicaciones»: ve y borra el de todo el equipo.
 
 Las reglas de registro son las que mandan: `record_day` siempre escribe con el usuario que llama
 —el contenido enviado no decide de quién es el registro— y `fetch_report` no usa `sudo`, así que
@@ -74,7 +92,8 @@ Depende de `hr` y `hr_attendance`.
 1. Copiar `elipsys_app_usage/` al directorio de addons (en Odoo.sh, a la carpeta de addons del
    repositorio y hacer push).
 2. Actualizar la lista de aplicaciones e instalar **Elipsys Time - Uso de aplicaciones**.
-3. Opcional: poner la clave de Claude en Ajustes › Empleados › Elipsys Time.
+3. Repartir el permiso «Revisar el uso de aplicaciones» a quien deba revisarlo.
+4. Opcional: poner la clave de Claude en Ajustes › Empleados › Elipsys Time.
 
 La app de escritorio lo detecta sola (`ir.model`, cada 30 minutos como mucho) y a partir de ahí
 manda el uso al modelo en vez de a los adjuntos. Los adjuntos antiguos (`elipsys-uso-u*.json`)

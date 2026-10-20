@@ -541,6 +541,14 @@ async function cargarConfigDeOdoo({ force = false } = {}) {
   try {
     const config = await odooService.fetchDesktopConfig(client);
     ai.setCompanyKey(config.aiApiKey || '');
+
+    // Quién se mide no lo decide quien está siendo medido: el interruptor vive en Odoo.
+    if (typeof config.trackAppUsage === 'boolean') {
+      if (settingsStore.read().trackAppUsage !== config.trackAppUsage) {
+        settingsStore.write({ trackAppUsage: config.trackAppUsage });
+        aplicarRegistroDeUso();
+      }
+    }
   } catch {
     // Sin conexión o sin módulo: se queda con lo que hubiera.
   }
@@ -690,6 +698,7 @@ ipcMain.handle('usage:mine', async (_event, { from, to } = {}) => {
 ipcMain.handle('usage:status', async () => ({
   ...(usageTracker ? usageTracker.status() : { supported: false, running: false, reason: null }),
   enabled: settingsStore.read().trackAppUsage,
+  managedByOdoo: !!client && (await odooService.elipsysModuleInstalled(client).catch(() => false)),
   lastError: usageError,
   today: usageStore.resumen(usageStore.leerDia(ecuadorDateKey(new Date()))),
 }));

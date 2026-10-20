@@ -4,6 +4,11 @@ from odoo import fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
+    elipsys_track_app_usage = fields.Boolean(
+        related='company_id.elipsys_track_app_usage',
+        readonly=False,
+    )
+
     elipsys_ai_api_key = fields.Char(
         string='Clave de API de Claude',
         config_parameter='elipsys.ai_api_key',
