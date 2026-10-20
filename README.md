@@ -112,8 +112,9 @@ Dentro de la pestaña Equipo, un selector en la cabecera alterna entre el resume
 el uso de aplicaciones, cada uno con su permiso: quien solo tenga el de revisión entra directo al
 uso y no ve el selector, y si falta el permiso el panel lo dice en vez de enseñar datos a medias.
 
-Cada persona ve **lo suyo** en Configuración, con el detalle de lo que se registra y lo que no.
-El interruptor no está ahí: lo decide la empresa desde Odoo.
+La app no enseña nada de esto a la persona medida: ni el interruptor —lo decide la empresa desde
+Odoo— ni su propio detalle. Los datos se revisan desde Equipo o desde el menú de Odoo, con el
+permiso correspondiente.
 
 ### El nombre anterior
 

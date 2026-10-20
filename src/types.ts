@@ -239,21 +239,6 @@ export interface UsageRange {
   days: UsageDay[];
 }
 
-export interface UsageStatus {
-  /** El sistema operativo permite saber qué aplicación está en primer plano. */
-  supported: boolean;
-  running: boolean;
-  /** Si se está registrando. Con el módulo de Odoo instalado, lo decide la compañía. */
-  enabled: boolean;
-  /** El interruptor vive en Odoo (módulo instalado), no en este equipo. */
-  managedByOdoo?: boolean;
-  reason: string | null;
-  lastError: string | null;
-  current: { app: string; label: string } | null;
-  idleSeconds: number;
-  today: UsageDay;
-}
-
 export interface ScheduleTask {
   id: number;
   name: string;
@@ -469,8 +454,6 @@ export interface ElectronApi {
   getTeamSchedule: () => Promise<TeamSchedule>;
   canReviewUsage: () => Promise<boolean>;
   getTeamUsage: (rango: { from: string; to: string }) => Promise<UsageRange>;
-  getMyUsage: (rango: { from: string; to: string }) => Promise<UsageRange>;
-  getUsageStatus: () => Promise<UsageStatus>;
 
   getTimerState: () => Promise<TimerState[]>;
   startTimer: (

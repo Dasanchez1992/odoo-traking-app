@@ -730,22 +730,6 @@ ipcMain.handle('usage:team', async (_event, { from, to } = {}) => {
   return { ...datos, days };
 });
 
-ipcMain.handle('usage:mine', async (_event, { from, to } = {}) => {
-  const rango = rangoValido(from, to);
-  return {
-    ...rango,
-    days: usageStore.rango(rango.from, rango.to).map((dia) => usageStore.resumen(dia)),
-  };
-});
-
-ipcMain.handle('usage:status', async () => ({
-  ...(usageTracker ? usageTracker.status() : { supported: false, running: false, reason: null }),
-  enabled: settingsStore.read().trackAppUsage,
-  managedByOdoo: !!client && (await odooService.elipsysModuleInstalled(client).catch(() => false)),
-  lastError: usageError,
-  today: usageStore.resumen(usageStore.leerDia(ecuadorDateKey(new Date()))),
-}));
-
 ipcMain.handle('projects:list', async () => {
   return odooService.fetchProjects(requireClient());
 });

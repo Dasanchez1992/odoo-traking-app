@@ -65,8 +65,6 @@ contextBridge.exposeInMainWorld('api', {
   getTeamSchedule: () => ipcRenderer.invoke('team:schedule'),
   canReviewUsage: () => ipcRenderer.invoke('usage:available'),
   getTeamUsage: (rango) => ipcRenderer.invoke('usage:team', rango),
-  getMyUsage: (rango) => ipcRenderer.invoke('usage:mine', rango),
-  getUsageStatus: () => ipcRenderer.invoke('usage:status'),
 
   listTickets: () => ipcRenderer.invoke('tickets:list'),
   openTicketInOdoo: (ticketId) => ipcRenderer.invoke('tickets:open', ticketId),
