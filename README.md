@@ -10,8 +10,8 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Ver métricas de productividad: horas registradas hoy y esta semana, promedio diario, porcentaje de
   imputación (horas en hojas de horas sobre horas de jornada), horas por día de las últimas dos
   semanas y dedicación por proyecto.
-- Recordar los fichajes a las 09:30 y 17:30 (hora de Ecuador), de lunes a viernes, o marcarlos
-  automáticamente a la hora configurada si se activa la opción.
+- Recordar los fichajes **15 minutos antes** del horario configurado (de lunes a viernes, hora de
+  Ecuador), o marcarlos automáticamente a esa hora si se activa la opción.
 - Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
 - Medir el tiempo de uso de aplicaciones y dejar que quien tenga el permiso lo revise por persona
   (día, semana o mes) desde la pestaña Equipo.
@@ -32,8 +32,10 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
   fecha de cierre o en etapa plegada no se consultan. Además hay filtros por etapa en ambas listas.
 - **Bandeja del sistema:** cerrar la ventana solo la oculta; la app sigue corriendo para poder emitir
   los recordatorios de fichaje. Para cerrarla del todo se usa «Salir» en el menú de la bandeja.
-- **Recordatorios:** se omiten si el fichaje correspondiente ya está hecho (no avisa de entrada si ya
-  fichaste, ni de salida si no estás fichado). Se pueden desactivar en Configuración.
+- **Recordatorios:** salen un cuarto de hora antes de la hora de entrada y de la de salida que haya
+  en Configuración —las mismas que usa la marcación automática, estén o no activadas—, y se omiten
+  si el fichaje correspondiente ya está hecho (no avisa de entrada si ya fichaste, ni de salida si
+  no estás fichado). Se pueden desactivar en Configuración.
 - **Tareas muy atrasadas:** las que llevan más de 30 días vencidas se ocultan por defecto para no
   hacer ruido, y se muestran con el botón «Ver atrasadas +1 mes».
 - **Inicio automático:** disponible en Windows y macOS (`app.setLoginItemSettings`). En Linux la

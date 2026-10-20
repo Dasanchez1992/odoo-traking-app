@@ -416,6 +416,10 @@ function applyStartAtLogin(enabled) {
 const reminders = createReminderScheduler({
   notify,
   isEnabled: () => settingsStore.read().remindersEnabled,
+  getSchedule: () => {
+    const ajustes = settingsStore.read();
+    return { checkIn: ajustes.autoCheckIn, checkOut: ajustes.autoCheckOut };
+  },
   getAttendanceState: async () => {
     if (!client) return 'unknown';
     try {

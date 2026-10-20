@@ -7,6 +7,16 @@ interface Props {
   onClose: () => void;
 }
 
+// Los avisos de fichaje salen un cuarto de hora antes del horario de cada quien.
+const AVISO_ANTES_MIN = 15;
+
+function quinceAntes(hora: string) {
+  const encaja = /^(\d{1,2}):(\d{2})$/.exec((hora || '').trim());
+  if (!encaja) return hora;
+  const total = Math.max(0, Number(encaja[1]) * 60 + Number(encaja[2]) - AVISO_ANTES_MIN);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 function updateMessage(update: UpdateStatus, version: string) {
   const actual = version ? `Versión ${version}. ` : '';
   switch (update.state) {
@@ -194,8 +204,10 @@ export default function SettingsPage({ onClose }: Props) {
                 <div className="setting-text">
                   <strong>Recordatorios de fichaje</strong>
                   <span>
-                    Aviso a las 09:30 para marcar entrada y a las 17:30 para marcar salida (hora de
-                    Ecuador), de lunes a viernes. Se omite el aviso si ya registraste ese fichaje.
+                    Aviso 15 minutos antes de tu horario: a las {quinceAntes(settings.autoCheckIn)}{' '}
+                    para la entrada y a las {quinceAntes(settings.autoCheckOut)} para la salida
+                    (hora de Ecuador), de lunes a viernes. Se omite el aviso si ya registraste ese
+                    fichaje. El horario se cambia aquí abajo.
                   </span>
                 </div>
                 <input
@@ -225,7 +237,7 @@ export default function SettingsPage({ onClose }: Props) {
                 />
               </label>
 
-              {settings.autoAttendance && (
+              {(settings.autoAttendance || settings.remindersEnabled) && (
                 <div className="setting-row setting-times">
                   <label className="field">
                     <span className="field-label">Hora de entrada</span>
@@ -244,9 +256,10 @@ export default function SettingsPage({ onClose }: Props) {
                     />
                   </label>
                   <span className="field-hint setting-times-hint">
-                    Hora de Ecuador. Si la app estaba cerrada, la entrada aún se registra hasta
-                    3 horas después y la salida hasta 1 hora después, con la hora real en que se
-                    marcó.
+                    Hora de Ecuador. De aquí salen los avisos (un cuarto de hora antes) y, si la
+                    marcación automática está encendida, también el fichaje.
+                    {settings.autoAttendance &&
+                      ' Si la app estaba cerrada, la entrada aún se registra hasta 3 horas después y la salida hasta 1 hora después, con la hora real en que se marcó.'}
                   </span>
                 </div>
               )}
