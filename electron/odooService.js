@@ -392,25 +392,38 @@ async function getEmployeeId(client) {
   throw new Error('No se encontró un empleado de RRHH vinculado a este usuario en Odoo');
 }
 
-// Odoo impide crear una asistencia si quedó otra sin cerrar; conviene decirlo en claro.
+// Odoo impide crear una asistencia que pise a otra o que deje una sin cerrar. Son los mensajes
+// que más se ven al fichar, y los suyos no dicen qué hacer.
 function translateAttendanceWriteError(err) {
   const msg = (err && err.message) || '';
-  if (/no ha registrado su salida|has not checked out|not checked out/i.test(msg)) {
-    const when = msg.match(/(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/);
+  const cuando = () => {
+    const encontrado = msg.match(/(\d{2}\/\d{2}\/\d{4}[\s,]+\d{2}:\d{2}(:\d{2})?)/);
+    return encontrado ? ` desde ${encontrado[1]}` : '';
+  };
+
+  if (/no ha registrado su salida|hasn't checked out|has not checked out|not checked out/i.test(msg)) {
     return new Error(
-      `Odoo tiene un fichaje tuyo sin cerrar${when ? ` desde ${when[1]}` : ''}. ` +
+      `Odoo tiene un fichaje tuyo sin cerrar${cuando()}. ` +
         'Ciérralo con «Cerrar fichaje abierto» antes de volver a marcar entrada.',
     );
   }
+
+  if (/already checked in|ya (había|ha) registrado su entrada|ya estaba fichad/i.test(msg)) {
+    return new Error(
+      `Odoo ya tiene una entrada tuya${cuando()} que se solapa con esta marcación. ` +
+        'Revisa tus asistencias en Odoo o usa «Cerrar fichaje abierto».',
+    );
+  }
+
   return attendanceError(err);
 }
 
 // Los mensajes de Odoo llegan traducidos, así que no basta con buscar las palabras en inglés.
+// Ojo con «no puede crear»: Odoo lo usa también cuando un fichaje pisa a otro, y entonces el
+// problema no es de permisos. Los errores de acceso siempre nombran el permiso o el grupo.
 function isAccessError(err) {
   const msg = (err && err.message) || '';
-  return /access|acceso|permis|permitid|derecho|allowed|no puede crear|cannot create|AccessError/i.test(
-    msg,
-  );
+  return /access|acceso|permis|permitid|derecho|allowed|AccessError/i.test(msg);
 }
 
 // Al fichar, Odoo recalcula las horas extra y crea líneas de hr.attendance.overtime.line en el
@@ -443,6 +456,16 @@ function attendanceError(err) {
 // un calculado que puede quedar desincronizado (diciendo "fuera" con una entrada abierta),
 // así que solo se usa cuando no hay permiso para consultar hr.attendance.
 async function getOpenAttendance(client, employeeId) {
+  // Con el módulo, Odoo responde por el empleado del propio usuario y sin depender de permisos.
+  if (await elipsysModuleInstalled(client)) {
+    try {
+      const estado = await client.execute_kw('hr.employee', 'elipsys_attendance_state', []);
+      return estado.attendanceId ? { id: estado.attendanceId, check_in: estado.checkIn } : null;
+    } catch {
+      // Si el método fallara, queda el camino de siempre.
+    }
+  }
+
   try {
     const records = await client.execute_kw(
       'hr.attendance',
@@ -478,6 +501,19 @@ async function getOpenAttendance(client, employeeId) {
 }
 
 async function toggleAttendance(client, employeeId) {
+  // Odoo 19 solo deja crear asistencias a quien administra Asistencias, y al cerrarlas recalcula
+  // las horas extra con el usuario en curso. El módulo hace lo mismo que el kiosco de Odoo (con
+  // permisos de sistema y solo sobre el empleado de quien llama), así que no hace falta repartir
+  // ese permiso.
+  if (await elipsysModuleInstalled(client)) {
+    try {
+      const r = await client.execute_kw('hr.employee', 'elipsys_attendance_toggle', []);
+      return { action: r.action, at: (r.action === 'check_in' ? r.checkIn : r.checkOut) || toOdooUtcString(new Date()) };
+    } catch (err) {
+      throw translateAttendanceWriteError(err);
+    }
+  }
+
   // No poder leer el estado no impide fichar: attendance_manual alterna por sí solo.
   let open = null;
   let stateKnown = true;
@@ -601,6 +637,15 @@ async function diagnoseAttendance(client) {
 
 // Cierra un fichaje que quedó abierto, para salir del estado en el que Odoo ya no deja fichar.
 async function closeOpenAttendance(client, employeeId) {
+  if (await elipsysModuleInstalled(client)) {
+    try {
+      const r = await client.execute_kw('hr.employee', 'elipsys_attendance_close', []);
+      return { action: 'check_out', at: r.checkOut, closedId: r.attendanceId };
+    } catch (err) {
+      throw translateAttendanceWriteError(err);
+    }
+  }
+
   const records = await client.execute_kw(
     'hr.attendance',
     'search_read',
@@ -1321,27 +1366,41 @@ function nombreUso(uid, fecha) {
 }
 
 /**
- * Dónde viven los datos de uso. Con el módulo `elipsys_app_usage` instalado van a su modelo, que
- * pueden leer quienes administran Empleados. Sin él, a adjuntos sueltos, que Odoo solo deja leer
- * a quien los creó y a los administradores de Ajustes.
+ * Si está instalado el módulo `elipsys_app_usage` en Odoo. De él dependen tres cosas: dónde se
+ * guarda el uso de aplicaciones, cómo se ficha y de dónde sale la clave de IA de la empresa.
  */
-async function usageBackend(client) {
+async function elipsysModuleInstalled(client) {
   const clave = `${client.url}|${client.db}`;
   const guardado = backendCache.get(clave);
-  if (guardado && Date.now() - guardado.cuando < VIGENCIA_BACKEND_MS) return guardado.backend;
+  if (guardado && Date.now() - guardado.cuando < VIGENCIA_BACKEND_MS) return guardado.instalado;
 
   // Se pregunta por el modelo, no por ir.model: esa tabla solo la leen los administradores de
   // Ajustes y la respuesta tiene que ser la misma para toda la plantilla.
   try {
     await client.execute_kw(MODELO_USO, 'fields_get', [['id'], ['type']]);
-    backendCache.set(clave, { backend: 'modulo', cuando: Date.now() });
-    return 'modulo';
+    backendCache.set(clave, { instalado: true, cuando: Date.now() });
+    return true;
   } catch (err) {
     const noExiste = /doesn't exist|does not exist|no existe|Object .* doesn/i.test(err.message);
     // Un fallo de red no debe dejar media jornada escribiendo en el sitio equivocado: solo se
     // recuerda la respuesta cuando Odoo dice claramente que el modelo no está.
-    if (noExiste) backendCache.set(clave, { backend: 'adjuntos', cuando: Date.now() });
-    return 'adjuntos';
+    if (noExiste) backendCache.set(clave, { instalado: false, cuando: Date.now() });
+    return false;
+  }
+}
+
+// Dónde viven los resúmenes de uso: en el modelo del módulo o en adjuntos sueltos.
+async function usageBackend(client) {
+  return (await elipsysModuleInstalled(client)) ? 'modulo' : 'adjuntos';
+}
+
+// Lo que la app lee de Odoo al entrar: de momento, la clave de IA de la empresa.
+async function fetchDesktopConfig(client) {
+  if (!(await elipsysModuleInstalled(client))) return {};
+  try {
+    return (await client.execute_kw('elipsys.desktop.config', 'get_config', [])) || {};
+  } catch {
+    return {};
   }
 }
 
@@ -1486,6 +1545,8 @@ module.exports = {
   canManageTeam,
   canReviewUsage,
   usageBackend,
+  elipsysModuleInstalled,
+  fetchDesktopConfig,
   pushUsageDay,
   fetchTeamUsage,
   pruneRemoteUsage,
@@ -1520,6 +1581,7 @@ module.exports = {
   getOpenAttendance,
   toggleAttendance,
   attendanceError,
+  translateAttendanceWriteError,
   closeOpenAttendance,
   diagnoseAttendance,
 };

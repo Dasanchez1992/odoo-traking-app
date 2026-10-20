@@ -37,8 +37,12 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 
 Opcional y apagable. Cada persona guarda **su propia** clave de la API de Claude en
 Configuración; se cifra con `safeStorage` del sistema operativo en el equipo de cada quien
-(`ai-key.dat` en la carpeta de datos), nunca viaja en el instalador ni se guarda en Odoo. Al
-guardarla se comprueba contra la API listando modelos, que no consume tokens.
+(`ai-key.dat` en la carpeta de datos) y nunca viaja en el instalador. Al guardarla se comprueba
+contra la API listando modelos, que no consume tokens.
+
+Con el módulo [`elipsys_app_usage`](addons/elipsys_app_usage/README.md) instalado también se
+puede poner una clave de la empresa en Odoo (Ajustes › Empleados › Elipsys Time) y entonces nadie
+tiene que configurar nada: la personal, si la hay, manda sobre la de la empresa.
 
 Cuatro usos, todos con revisión humana antes de que algo llegue a Odoo:
 
@@ -104,6 +108,9 @@ volver a iniciar sesión.
 - Módulo **Hoja de horas** (`hr_timesheet`) si querés que el tiempo registrado se vea en las hojas de horas del proyecto.
 - Módulo **Asistencias** (`hr_attendance`) y que el usuario tenga un empleado vinculado (`res.users.employee_id`).
 - Un usuario o API key con permisos para leer/escribir esos modelos.
+- Para fichar sin repartir el grupo «Asistencias → Officer», el módulo
+  [`elipsys_app_usage`](addons/elipsys_app_usage/README.md): Odoo 19 crea las líneas de horas
+  extra con el usuario en curso y sin ese permiso rechaza la marcación entera.
 - Para revisar el uso de aplicaciones del equipo: con el módulo `elipsys_app_usage` instalado
   basta **Empleados / Administrador** (el mismo de la pestaña Equipo); sin él hace falta además
   **Administración / Ajustes** (`base.group_system`).

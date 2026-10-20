@@ -3,3 +3,4 @@ access_elipsys_app_usage_user,elipsys.app.usage usuario,model_elipsys_app_usage,
 access_elipsys_app_usage_manager,elipsys.app.usage responsable,model_elipsys_app_usage,hr.group_hr_manager,1,1,1,1
 access_elipsys_app_usage_line_user,elipsys.app.usage.line usuario,model_elipsys_app_usage_line,base.group_user,1,0,0,0
 access_elipsys_app_usage_line_manager,elipsys.app.usage.line responsable,model_elipsys_app_usage_line,hr.group_hr_manager,1,1,1,1
+access_elipsys_desktop_config_user,elipsys.desktop.config usuario,model_elipsys_desktop_config,base.group_user,1,1,1,0

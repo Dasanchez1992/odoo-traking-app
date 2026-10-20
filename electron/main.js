@@ -530,6 +530,22 @@ function aplicarRegistroDeUso() {
   }
 }
 
+const CONFIG_ODOO_MS = 5 * 60 * 1000;
+let configOdooAt = 0;
+
+// La clave de IA de la empresa vive en Odoo; aquí solo se tiene en memoria.
+async function cargarConfigDeOdoo({ force = false } = {}) {
+  if (!client) return;
+  if (!force && Date.now() - configOdooAt < CONFIG_ODOO_MS) return;
+  configOdooAt = Date.now();
+  try {
+    const config = await odooService.fetchDesktopConfig(client);
+    ai.setCompanyKey(config.aiApiKey || '');
+  } catch {
+    // Sin conexión o sin módulo: se queda con lo que hubiera.
+  }
+}
+
 function ponerseAlDiaConElUso() {
   usageStore.limpiarAntiguos();
   sincronizarUso();
@@ -552,6 +568,7 @@ ipcMain.handle('auth:login', async (_event, credentials) => {
   sessionStore.save(credentials);
   startOverduePolling();
   ponerseAlDiaConElUso();
+  cargarConfigDeOdoo({ force: true });
   return user;
 });
 
@@ -563,6 +580,7 @@ ipcMain.handle('auth:restore', async () => {
     client = newClient;
     startOverduePolling();
     ponerseAlDiaConElUso();
+    cargarConfigDeOdoo({ force: true });
     return user;
   } catch {
     sessionStore.clear();
@@ -572,7 +590,9 @@ ipcMain.handle('auth:restore', async () => {
 
 ipcMain.handle('auth:logout', async () => {
   client = null;
+  ai.setCompanyKey('');
   ai.resetAi();
+  configOdooAt = 0;
   timers = [];
   hideMiniWindow();
   stopOverduePolling();
@@ -730,9 +750,19 @@ function requireAi() {
 }
 
 ipcMain.handle('ai:status', async () => {
-  const configurada = !!aiKeyStore.load();
-  if (!aiHabilitada()) return { available: false, configured: configurada, reason: 'desactivada' };
-  return { available: configurada, configured: configurada, key: aiKeyStore.mask(aiKeyStore.load()) };
+  await cargarConfigDeOdoo();
+  const propia = aiKeyStore.load();
+  const origen = ai.keySource();
+  const hayClave = origen !== 'ninguna';
+  if (!aiHabilitada()) {
+    return { available: false, configured: hayClave, source: origen, reason: 'desactivada' };
+  }
+  return {
+    available: hayClave,
+    configured: !!propia,
+    source: origen,
+    key: aiKeyStore.mask(propia),
+  };
 });
 
 ipcMain.handle('ai:save-key', async (_event, key) => {

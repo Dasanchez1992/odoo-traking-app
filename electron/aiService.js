@@ -8,6 +8,9 @@ const MODELO_LARGO = 'claude-sonnet-5-5';
 
 let cliente = null;
 let claveCliente = null;
+// Clave de la empresa, configurada en Odoo (Ajustes → Empleados → Elipsys Time). Se guarda solo
+// en memoria: si se quita de Odoo, deja de usarse en cuanto se vuelve a entrar.
+let claveEmpresa = '';
 
 // Cada persona guarda su propia clave en su equipo; al cambiarla se descarta el cliente anterior.
 function resetAi() {
@@ -15,14 +18,28 @@ function resetAi() {
   claveCliente = null;
 }
 
+function setCompanyKey(clave) {
+  const nueva = String(clave || '').trim();
+  if (nueva !== claveEmpresa) resetAi();
+  claveEmpresa = nueva;
+  return !!claveEmpresa;
+}
+
+// La clave propia manda sobre la de la empresa: quien quiera usar la suya solo tiene que ponerla.
+function keySource() {
+  if (keyStore.load()) return 'personal';
+  if (claveEmpresa) return 'odoo';
+  return 'ninguna';
+}
+
 function getApiKey() {
-  const clave = keyStore.load();
-  if (!clave) {
-    throw new Error(
-      'Todavía no has guardado tu clave de Claude. Ve a Configuración → Asistencia de IA.',
-    );
-  }
-  return clave;
+  const propia = keyStore.load();
+  if (propia) return propia;
+  if (claveEmpresa) return claveEmpresa;
+  throw new Error(
+    'Todavía no hay una clave de Claude. Ponla en Configuración → Asistencia de IA, o pide que ' +
+      'se configure la de la empresa en Odoo (Ajustes → Empleados → Elipsys Time).',
+  );
 }
 
 function getClient() {
@@ -288,6 +305,8 @@ async function summarizeMeeting({ title, date, durationMs, transcript }) {
 }
 
 module.exports = {
+  setCompanyKey,
+  keySource,
   resetAi,
   getApiKey,
   testApiKey,

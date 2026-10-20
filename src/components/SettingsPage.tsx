@@ -375,6 +375,8 @@ export default function SettingsPage({ onClose }: Props) {
                     <span>
                       Cada persona usa la suya. Se guarda cifrada en este equipo, nunca en Odoo ni
                       en el instalador. Se crea en console.anthropic.com → API Keys.
+                      {ai?.source === 'odoo' &&
+                        ' Ahora mismo funciona con la clave de la empresa configurada en Odoo; si guardas la tuya, se usa la tuya.'}
                     </span>
                   </div>
 
@@ -390,6 +392,12 @@ export default function SettingsPage({ onClose }: Props) {
                     </div>
                   ) : (
                     <div className="ai-key-form">
+                      {ai?.source === 'odoo' && (
+                        <span className="pill is-brand" title="Configurada en Odoo por el administrador">
+                          <IconCheck size={12} />
+                          Clave de la empresa
+                        </span>
+                      )}
                       <input
                         type="password"
                         placeholder="sk-ant-..."

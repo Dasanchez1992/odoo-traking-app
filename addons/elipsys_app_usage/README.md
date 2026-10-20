@@ -1,7 +1,12 @@
-# Elipsys Time — Uso de aplicaciones
+# Elipsys Time — Soporte en Odoo
 
-Módulo de Odoo **19.0** que guarda el tiempo de uso de aplicaciones que mide la app de escritorio
-[Elipsys Time](../../README.md). Sin él la app también funciona, pero guarda los resúmenes como
+Módulo de Odoo **19.0** que resuelve en el servidor tres cosas de la app de escritorio
+[Elipsys Time](../../README.md): dónde se guarda el uso de aplicaciones, el fichaje sin repartir
+permisos de Asistencias, y la clave de IA de la empresa.
+
+## 1. Uso de aplicaciones
+
+Guarda el tiempo de uso de aplicaciones que mide la app. Sin él la app también funciona, pero guarda los resúmenes como
 adjuntos sueltos, que Odoo solo deja leer a los administradores de Ajustes
 (`base.group_system`); con el módulo los leen quienes administran Empleados
 (`hr.group_hr_manager`), que es el mismo permiso que ya pide la pestaña Equipo.
@@ -12,11 +17,46 @@ adjuntos sueltos, que Odoo solo deja leer a los administradores de Ajustes
 | --- | --- |
 | `elipsys.app.usage` | Un registro por persona y día: segundos de actividad e inactividad. |
 | `elipsys.app.usage.line` | El reparto de ese día por programa. |
+| `elipsys.desktop.config` | Lo que la app lee de Odoo al entrar (la clave de IA). |
 
 Dos entradas en **Empleados › Informes**: «Uso de aplicaciones» (lista, tabla dinámica y gráfico)
 y «Tiempo por aplicación» (tabla dinámica por programa).
 
 Una acción planificada diaria borra lo anterior a 180 días.
+
+## 2. Fichaje sin permisos de más
+
+Odoo 19 solo deja crear asistencias a quien administra Asistencias, y al cerrar una calcula las
+horas extra creando líneas de `hr.attendance.overtime.line` **con el usuario en curso**, que
+tampoco puede. Por eso fichar desde fuera de Odoo falla con un error de permisos, y la única
+salida era repartir el grupo «Officer: Manage attendances», que además deja ver y editar las
+asistencias de los demás.
+
+El módulo añade a `hr.employee` tres métodos que hacen lo mismo que el kiosco de Odoo
+(`employee.sudo()._attendance_action_change()`), pero **siempre sobre el empleado del usuario que
+llama** —nunca se recibe un empleado por parámetro, así que nadie puede fichar por otro—:
+
+| Método | Para qué |
+| --- | --- |
+| `elipsys_attendance_state()` | Si está dentro o fuera y desde cuándo. |
+| `elipsys_attendance_toggle()` | Marca entrada o salida, lo que toque. |
+| `elipsys_attendance_close(check_out=False)` | Cierra un fichaje que quedó abierto. |
+
+La app los usa si están; si no, sigue por donde iba. Nadie gana permiso para tocar las
+asistencias de otra persona: lo comprobamos en las pruebas.
+
+## 3. Clave de IA de la empresa
+
+En **Ajustes › Empleados › Elipsys Time** (solo Administración/Ajustes) se puede guardar una clave
+de API de Claude para toda la plantilla; se guarda en `ir.config_parameter`
+(`elipsys.ai_api_key`). La app la lee con `elipsys.desktop.config.get_config()`, que es lo único
+que expone de los parámetros del sistema.
+
+Si alguien guarda su clave personal en la app, manda la suya. Si no hay ninguna de las dos, la
+asistencia de IA queda apagada.
+
+> **Ojo:** cualquier usuario interno puede leer esa clave desde la app. Conviene que sea una clave
+> de la empresa, con su propio límite de gasto, y no la personal de nadie.
 
 ## Permisos
 
@@ -29,9 +69,12 @@ devuelve lo que cada quien tenga derecho a ver.
 
 ## Instalación
 
+Depende de `hr` y `hr_attendance`.
+
 1. Copiar `elipsys_app_usage/` al directorio de addons (en Odoo.sh, a la carpeta de addons del
    repositorio y hacer push).
 2. Actualizar la lista de aplicaciones e instalar **Elipsys Time - Uso de aplicaciones**.
+3. Opcional: poner la clave de Claude en Ajustes › Empleados › Elipsys Time.
 
 La app de escritorio lo detecta sola (`ir.model`, cada 30 minutos como mucho) y a partir de ahí
 manda el uso al modelo en vez de a los adjuntos. Los adjuntos antiguos (`elipsys-uso-u*.json`)

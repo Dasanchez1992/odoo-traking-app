@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_elipsys" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.elipsys</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="hr.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='hr']" position="inside">
+                <block title="Elipsys Time" name="elipsys_time_container" groups="base.group_system">
+                    <setting id="elipsys_ai_key_setting" string="Asistencia de IA"
+                             help="Clave de API de Claude para toda la plantilla. Si se deja vacía, cada quien pone la suya en la app. La leen todos los usuarios internos desde la app, así que conviene una clave de la empresa con límite de gasto.">
+                        <field name="elipsys_ai_api_key" password="True" placeholder="sk-ant-..."/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

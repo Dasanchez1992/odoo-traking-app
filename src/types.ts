@@ -282,7 +282,10 @@ export interface Recording {
 
 export interface AiStatus {
   available: boolean;
+  /** Hay una clave propia guardada en este equipo. */
   configured: boolean;
+  /** De dónde sale la clave en uso: la propia, la de la empresa en Odoo, o ninguna. */
+  source?: 'personal' | 'odoo' | 'ninguna';
   /** Clave enmascarada, solo para mostrarla en la configuración. */
   key?: string;
   reason?: string;
