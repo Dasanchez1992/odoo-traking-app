@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Las reglas de distintos grupos se suman: quien administra Empleados ve todo, el
+             resto de la plantilla solo lo propio. -->
+        <record id="rule_app_usage_own" model="ir.rule">
+            <field name="name">Uso de aplicaciones: cada quien el suyo</field>
+            <field name="model_id" ref="model_elipsys_app_usage"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="rule_app_usage_manager" model="ir.rule">
+            <field name="name">Uso de aplicaciones: responsables de Empleados</field>
+            <field name="model_id" ref="model_elipsys_app_usage"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+        </record>
+
+        <record id="rule_app_usage_line_own" model="ir.rule">
+            <field name="name">Uso por aplicación: cada quien el suyo</field>
+            <field name="model_id" ref="model_elipsys_app_usage_line"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="rule_app_usage_line_manager" model="ir.rule">
+            <field name="name">Uso por aplicación: responsables de Empleados</field>
+            <field name="model_id" ref="model_elipsys_app_usage_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+        </record>
+    </data>
+</odoo>

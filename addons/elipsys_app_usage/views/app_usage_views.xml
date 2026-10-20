@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Los registros los crea la app de escritorio: aquí solo se consultan (y se borran). -->
+        <record id="view_app_usage_list" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.list</field>
+            <field name="model">elipsys.app.usage</field>
+            <field name="arch" type="xml">
+                <list string="Uso de aplicaciones" create="0" edit="0" sample="1">
+                    <field name="date"/>
+                    <field name="user_id"/>
+                    <field name="department_id" optional="show"/>
+                    <field name="active_hours" widget="float_time" sum="Actividad"/>
+                    <field name="idle_hours" widget="float_time" sum="Inactividad" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_app_usage_form" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.form</field>
+            <field name="model">elipsys.app.usage</field>
+            <field name="arch" type="xml">
+                <form string="Uso de aplicaciones" create="0" edit="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="employee_id"/>
+                                <field name="department_id"/>
+                            </group>
+                            <group>
+                                <field name="date"/>
+                                <field name="active_hours" widget="float_time"/>
+                                <field name="idle_hours" widget="float_time"/>
+                            </group>
+                        </group>
+                        <field name="line_ids">
+                            <list create="0" edit="0">
+                                <field name="label"/>
+                                <field name="app" optional="hide"/>
+                                <field name="hours" widget="float_time" sum="Total"/>
+                            </list>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_app_usage_search" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.search</field>
+            <field name="model">elipsys.app.usage</field>
+            <field name="arch" type="xml">
+                <search string="Uso de aplicaciones">
+                    <field name="user_id"/>
+                    <field name="department_id"/>
+                    <field name="date"/>
+                    <filter name="hoy" string="Hoy"
+                            domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <filter name="mio" string="Lo mío" domain="[('user_id', '=', uid)]"/>
+                    <separator/>
+                    <!-- Filtro de fechas estándar: mes, trimestre, año y comparación. -->
+                    <filter name="por_fecha" string="Día" date="date"/>
+                    <group>
+                        <filter name="group_user" string="Persona" context="{'group_by': 'user_id'}"/>
+                        <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                        <filter name="group_date" string="Día" context="{'group_by': 'date'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_app_usage_pivot" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.pivot</field>
+            <field name="model">elipsys.app.usage</field>
+            <field name="arch" type="xml">
+                <pivot sample="1">
+                    <field name="user_id" type="row"/>
+                    <field name="date" interval="day" type="col"/>
+                    <field name="active_hours" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_app_usage_graph" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.graph</field>
+            <field name="model">elipsys.app.usage</field>
+            <field name="arch" type="xml">
+                <graph type="bar" sample="1">
+                    <field name="user_id"/>
+                    <field name="active_hours" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="action_app_usage" model="ir.actions.act_window">
+            <field name="name">Uso de aplicaciones</field>
+            <field name="res_model">elipsys.app.usage</field>
+            <field name="view_mode">list,pivot,graph,form</field>
+            <field name="search_view_id" ref="view_app_usage_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Todavía no hay uso registrado
+                </p>
+                <p>
+                    Lo envía la app de escritorio Elipsys Time mientras está abierta, con el
+                    registro de uso activado en su configuración.
+                </p>
+            </field>
+        </record>
+
+        <!-- Vista por aplicación: para responder «en qué programas se va el tiempo». -->
+        <record id="view_app_usage_line_list" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.line.list</field>
+            <field name="model">elipsys.app.usage.line</field>
+            <field name="arch" type="xml">
+                <list string="Tiempo por aplicación" create="0" edit="0" sample="1">
+                    <field name="date"/>
+                    <field name="user_id"/>
+                    <field name="label"/>
+                    <field name="hours" widget="float_time" sum="Total"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_app_usage_line_search" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.line.search</field>
+            <field name="model">elipsys.app.usage.line</field>
+            <field name="arch" type="xml">
+                <search string="Tiempo por aplicación">
+                    <field name="label"/>
+                    <field name="user_id"/>
+                    <field name="date"/>
+                    <filter name="hoy" string="Hoy"
+                            domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                    <separator/>
+                    <filter name="por_fecha" string="Día" date="date"/>
+                    <group>
+                        <filter name="group_label" string="Aplicación" context="{'group_by': 'label'}"/>
+                        <filter name="group_user" string="Persona" context="{'group_by': 'user_id'}"/>
+                        <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                        <filter name="group_date" string="Día" context="{'group_by': 'date'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_app_usage_line_pivot" model="ir.ui.view">
+            <field name="name">elipsys.app.usage.line.pivot</field>
+            <field name="model">elipsys.app.usage.line</field>
+            <field name="arch" type="xml">
+                <pivot sample="1">
+                    <field name="label" type="row"/>
+                    <field name="user_id" type="col"/>
+                    <field name="hours" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="action_app_usage_line" model="ir.actions.act_window">
+            <field name="name">Tiempo por aplicación</field>
+            <field name="res_model">elipsys.app.usage.line</field>
+            <field name="view_mode">pivot,list</field>
+            <field name="search_view_id" ref="view_app_usage_line_search"/>
+        </record>
+
+        <menuitem
+            id="menu_app_usage"
+            name="Uso de aplicaciones"
+            parent="hr.hr_menu_hr_reports"
+            action="action_app_usage"
+            groups="hr.group_hr_manager"
+            sequence="80"/>
+
+        <menuitem
+            id="menu_app_usage_line"
+            name="Tiempo por aplicación"
+            parent="hr.hr_menu_hr_reports"
+            action="action_app_usage_line"
+            groups="hr.group_hr_manager"
+            sequence="81"/>
+    </data>
+</odoo>

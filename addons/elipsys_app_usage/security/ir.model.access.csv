@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_elipsys_app_usage_user,elipsys.app.usage usuario,model_elipsys_app_usage,base.group_user,1,1,1,0
+access_elipsys_app_usage_manager,elipsys.app.usage responsable,model_elipsys_app_usage,hr.group_hr_manager,1,1,1,1
+access_elipsys_app_usage_line_user,elipsys.app.usage.line usuario,model_elipsys_app_usage_line,base.group_user,1,0,0,0
+access_elipsys_app_usage_line_manager,elipsys.app.usage.line responsable,model_elipsys_app_usage_line,hr.group_hr_manager,1,1,1,1

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_app_usage_gc" model="ir.cron">
+            <field name="name">Uso de aplicaciones: borrar lo anterior a 180 días</field>
+            <field name="model_id" ref="model_elipsys_app_usage"/>
+            <field name="state">code</field>
+            <field name="code">model._gc_old_records()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+        </record>
+    </data>
+</odoo>

@@ -72,16 +72,22 @@ segundos; si una política de grupo impide ejecutar el `.ps1`, se reintenta con 
 Más de cinco minutos sin tocar el equipo (`powerMonitor.getSystemIdleTime`) cuentan como inactivo.
 
 Cada día se guarda primero en `uso-apps/<fecha>.json` dentro de la carpeta de datos (120 días) y
-se sube a Odoo cada cinco minutos como un **adjunto suelto** —sin registro asociado— llamado
-`elipsys-uso-u<uid>-<fecha>.json`, con el resumen en el campo `description`. Odoo solo deja leer
-los adjuntos sin `res_id` a quien los creó y a los administradores de Ajustes
-(`base.group_system`), así que el detalle de cada persona no queda al alcance del resto de la
-plantilla. Cada cliente borra en Odoo sus propios días de hace más de 180 días.
+se sube a Odoo cada cinco minutos. Dónde acaba depende de si está instalado el módulo
+[`elipsys_app_usage`](addons/elipsys_app_usage/README.md):
 
-La pestaña Equipo muestra el reparto por persona y por aplicación con el mismo permiso de siempre
-(`hr.group_hr_manager`) **más** el de Ajustes; sin ese segundo permiso el panel lo dice en vez de
-enseñar datos a medias. Cada persona ve lo suyo en Configuración, donde también puede apagar el
-registro.
+| | Con el módulo | Sin el módulo |
+| --- | --- | --- |
+| Dónde se guarda | Modelo `elipsys.app.usage` (+ una línea por programa) | Adjunto suelto `elipsys-uso-u<uid>-<fecha>.json`, con el resumen en `description` |
+| Quién lo revisa | Administración de Empleados (`hr.group_hr_manager`) | Administración de Ajustes (`base.group_system`), que es a quien Odoo deja leer los adjuntos sin `res_id` |
+| Quién borra lo viejo | Acción planificada diaria del módulo | Cada cliente, lo suyo de más de 180 días |
+| Analítica en Odoo | Empleados › Informes › Uso de aplicaciones | — |
+
+En los dos casos cada persona solo puede escribir y leer lo suyo; la app detecta el módulo sola
+(mira `ir.model` como mucho cada 30 minutos) y cambia de sitio sin tocar nada.
+
+La pestaña Equipo muestra el reparto por persona y por aplicación con el permiso que toque según
+el caso; si falta, el panel lo dice en vez de enseñar datos a medias. Cada persona ve lo suyo en
+Configuración, donde también puede apagar el registro.
 
 ### El nombre anterior
 
@@ -98,8 +104,9 @@ volver a iniciar sesión.
 - Módulo **Hoja de horas** (`hr_timesheet`) si querés que el tiempo registrado se vea en las hojas de horas del proyecto.
 - Módulo **Asistencias** (`hr_attendance`) y que el usuario tenga un empleado vinculado (`res.users.employee_id`).
 - Un usuario o API key con permisos para leer/escribir esos modelos.
-- Para revisar el uso de aplicaciones del equipo: **Administración / Ajustes**
-  (`base.group_system`), además de **Empleados / Administrador** que ya pide la pestaña Equipo.
+- Para revisar el uso de aplicaciones del equipo: con el módulo `elipsys_app_usage` instalado
+  basta **Empleados / Administrador** (el mismo de la pestaña Equipo); sin él hace falta además
+  **Administración / Ajustes** (`base.group_system`).
 
 ## Instalación
 

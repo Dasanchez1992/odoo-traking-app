@@ -1310,19 +1310,49 @@ async function fetchTicketContext(client, ticketId) {
 // leer esos adjuntos a quien los creó y a los administradores de Ajustes, así que el detalle de
 // cada persona no queda al alcance del resto de la plantilla.
 const PREFIJO_USO = 'elipsys-uso';
+const MODELO_USO = 'elipsys.app.usage';
+// Mirar si el módulo está instalado en cada sincronización sería una consulta de más; media hora
+// basta para que instalarlo surta efecto sin reiniciar la app.
+const VIGENCIA_BACKEND_MS = 30 * 60 * 1000;
+const backendCache = new Map();
 
 function nombreUso(uid, fecha) {
   return `${PREFIJO_USO}-u${uid}-${fecha}.json`;
 }
 
+/**
+ * Dónde viven los datos de uso. Con el módulo `elipsys_app_usage` instalado van a su modelo, que
+ * pueden leer quienes administran Empleados. Sin él, a adjuntos sueltos, que Odoo solo deja leer
+ * a quien los creó y a los administradores de Ajustes.
+ */
+async function usageBackend(client) {
+  const clave = `${client.url}|${client.db}`;
+  const guardado = backendCache.get(clave);
+  if (guardado && Date.now() - guardado.cuando < VIGENCIA_BACKEND_MS) return guardado.backend;
+
+  // Se pregunta por el modelo, no por ir.model: esa tabla solo la leen los administradores de
+  // Ajustes y la respuesta tiene que ser la misma para toda la plantilla.
+  try {
+    await client.execute_kw(MODELO_USO, 'fields_get', [['id'], ['type']]);
+    backendCache.set(clave, { backend: 'modulo', cuando: Date.now() });
+    return 'modulo';
+  } catch (err) {
+    const noExiste = /doesn't exist|does not exist|no existe|Object .* doesn/i.test(err.message);
+    // Un fallo de red no debe dejar media jornada escribiendo en el sitio equivocado: solo se
+    // recuerda la respuesta cuando Odoo dice claramente que el modelo no está.
+    if (noExiste) backendCache.set(clave, { backend: 'adjuntos', cuando: Date.now() });
+    return 'adjuntos';
+  }
+}
+
 // Solo quien administra Ajustes puede leer los adjuntos sueltos de los demás; sin ese permiso la
 // búsqueda devolvería únicamente los propios y la pantalla engañaría.
 async function canReviewUsage(client) {
+  // Con el módulo manda su permiso de lectura; sin él, el de los adjuntos sueltos.
+  const grupo =
+    (await usageBackend(client)) === 'modulo' ? 'hr.group_hr_manager' : 'base.group_system';
   try {
-    const resultado = await client.execute_kw('res.users', 'has_group', [
-      [client.uid],
-      'base.group_system',
-    ]);
+    const resultado = await client.execute_kw('res.users', 'has_group', [[client.uid], grupo]);
     if (typeof resultado === 'boolean') return resultado;
   } catch {
     // has_group puede no ser invocable por RPC según la versión.
@@ -1331,6 +1361,11 @@ async function canReviewUsage(client) {
 }
 
 async function pushUsageDay(client, resumen) {
+  if ((await usageBackend(client)) === 'modulo') {
+    // El modelo decide de quién es el registro; el resumen solo trae los números.
+    return client.execute_kw(MODELO_USO, 'record_day', [resumen]);
+  }
+
   const name = nombreUso(client.uid, resumen.date);
   const description = JSON.stringify(resumen);
   const existentes = await client.execute_kw(
@@ -1355,23 +1390,13 @@ async function pushUsageDay(client, resumen) {
   ]);
 }
 
-function diaDeAdjunto(adjunto) {
-  const fecha = (adjunto.name.match(/(\d{4}-\d{2}-\d{2})/) || [])[1];
-  if (!fecha) return null;
-
-  let datos;
-  try {
-    datos = JSON.parse(adjunto.description || '{}');
-  } catch {
-    return null;
-  }
+// Venga del módulo o de un adjunto, la ventana recibe siempre la misma forma.
+function normalizarDia(datos, { date, userId, userName }) {
   if (!Array.isArray(datos.apps)) return null;
-
-  const usuario = Array.isArray(adjunto.create_uid) ? adjunto.create_uid : [adjunto.create_uid, ''];
   return {
-    date: fecha,
-    userId: usuario[0],
-    userName: usuario[1] || '',
+    date,
+    userId,
+    userName: userName || '',
     activeSeconds: Math.round(datos.activeSeconds || 0),
     idleSeconds: Math.round(datos.idleSeconds || 0),
     updatedAt: datos.updatedAt || null,
@@ -1385,7 +1410,32 @@ function diaDeAdjunto(adjunto) {
   };
 }
 
+function diaDeAdjunto(adjunto) {
+  const fecha = (adjunto.name.match(/(\d{4}-\d{2}-\d{2})/) || [])[1];
+  if (!fecha) return null;
+
+  let datos;
+  try {
+    datos = JSON.parse(adjunto.description || '{}');
+  } catch {
+    return null;
+  }
+
+  const usuario = Array.isArray(adjunto.create_uid) ? adjunto.create_uid : [adjunto.create_uid, ''];
+  return normalizarDia(datos, { date: fecha, userId: usuario[0], userName: usuario[1] });
+}
+
 async function fetchTeamUsage(client, { from, to }) {
+  if ((await usageBackend(client)) === 'modulo') {
+    const filas = await client.execute_kw(MODELO_USO, 'fetch_report', [from, to]);
+    const days = filas
+      .map((fila) =>
+        normalizarDia(fila, { date: fila.date, userId: fila.userId, userName: fila.userName }),
+      )
+      .filter(Boolean);
+    return { from, to, days };
+  }
+
   // El resumen de un día se escribe ese mismo día o después, nunca antes: con write_date basta
   // para acotar la búsqueda y el recorte fino se hace por la fecha del nombre.
   const adjuntos = await client.execute_kw(
@@ -1411,6 +1461,9 @@ async function fetchTeamUsage(client, { from, to }) {
 
 // Cada cliente limpia lo suyo: en Odoo no se guardan los días de hace más de medio año.
 async function pruneRemoteUsage(client, dias = 180) {
+  // Con el módulo lo hace su acción planificada, igual para todo el mundo.
+  if ((await usageBackend(client)) === 'modulo') return 0;
+
   const limite = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
   const prefijo = `${PREFIJO_USO}-u${client.uid}-`;
   const viejos = await client.execute_kw(
