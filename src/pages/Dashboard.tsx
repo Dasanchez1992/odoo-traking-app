@@ -329,7 +329,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               role="tab"
               aria-selected={tab === 'tickets'}
             >
-              Tickets
+              Mis tickets
             </button>
             <button
               className={`tab ${tab === 'activities' ? 'is-active' : ''}`}
