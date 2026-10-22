@@ -320,10 +320,11 @@ async function workloadAnalysis({ today, people }) {
       'Analizas la carga de trabajo de un equipo de consultoría Odoo para quien tiene que ' +
       'repartir una tarea nueva. Por cada persona devuelves: estado (libre, ajustado o ' +
       'saturado), si se le puede dar algo en paralelo ahora mismo, desde cuándo tendría hueco ' +
-      '(«ahora» o una fecha AAAA-MM-DD) y el motivo en una frase, citando las horas o las ' +
-      'tareas concretas en que te basas. Además, un resumen de dos o tres frases, la mejor ' +
-      'opción para cargarle algo, y los riesgos que veas (tareas vencidas, semanas por encima ' +
-      'de 40 h, trabajo sin estimar). Las cuentas ya vienen hechas: no las rehagas ni las ' +
+      '(«ahora» o una fecha AAAA-MM-DD) y el motivo en UNA frase de 25 palabras como mucho, ' +
+      'citando la cifra o la tarea concreta en que te basas. Además, un resumen de dos frases ' +
+      'como mucho, la mejor opción para cargarle algo (dos frases), y como mucho CUATRO riesgos, ' +
+      'de una línea cada uno y sin repetir lo que ya dice el motivo de cada persona (tareas ' +
+      'vencidas, semanas por encima de 40 h, trabajo sin estimar). Las cuentas ya vienen hechas: no las rehagas ni las ' +
       'contradigas, úsalas. Español neutro, sin juzgar a las personas: hablas de carga, no de ' +
       'rendimiento. No inventes tareas ni fechas que no estén en los datos.',
     prompt:

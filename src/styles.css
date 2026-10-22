@@ -2219,72 +2219,233 @@ textarea:focus {
 }
 
 /* Análisis de carga de trabajo */
-.workload-pick {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  max-height: 260px;
+.modal-tall {
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-tall .modal-body {
   overflow: auto;
 }
 
-.workload-pick label {
+.wl-lead {
+  margin: 2px 0 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.wl-pick-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.wl-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wl-pick label {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 4px;
+  padding: 8px 2px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
 
-.workload-name {
+.wl-pick-name {
   font-size: 13px;
   font-weight: 600;
 }
 
-.workload-meta {
+.wl-pick-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.wl-pick-meta em,
+.wl-stats em {
+  font-style: normal;
+}
+
+/* Lo primero que se busca: a quién darle la tarea. */
+.wl-best {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--radius-md);
+  color: var(--brand-700);
+}
+
+.wl-best > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.wl-best div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wl-best strong {
+  font-size: 13.5px;
+}
+
+.wl-best span {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.wl-group {
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.wl-group span {
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  letter-spacing: 0;
+}
+
+.wl-card {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.wl-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.wl-card-head strong {
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-when {
+  margin-left: auto;
+  flex: none;
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.workload-pick .workload-meta {
-  margin-left: auto;
-  text-align: right;
+/* Las cifras, en columnas: se comparan de un vistazo entre personas. */
+.wl-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
 }
 
-.workload-row {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+.wl-stats div {
+  min-width: 0;
 }
 
-.workload-head {
+.wl-stats dt {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 1px;
+}
+
+.wl-stats dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-stats dd em {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* El porqué, a dos líneas: lo largo se lee en el tooltip o en Odoo. */
+.wl-why {
+  margin: 9px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wl-risks {
+  margin-top: 14px;
+  border: 1px solid var(--warning-bg);
+  border-radius: var(--radius-md);
+  background: var(--warning-bg);
+}
+
+.wl-risks summary {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 3px;
+  gap: 7px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--warning-fg);
 }
 
-.workload-motivo {
-  margin: 6px 0 0;
-  font-size: 13px;
+.wl-risks summary span {
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid currentColor;
+  opacity: 0.75;
+  font-size: 11px;
+}
+
+.wl-risks ul {
+  margin: 0;
+  padding: 0 14px 12px 30px;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
-.workload-riesgos {
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: var(--warning-bg);
-  border-radius: var(--radius-md);
-  font-size: 13px;
+.wl-risks li {
+  margin-bottom: 4px;
 }
 
-.workload-riesgos ul {
-  margin: 6px 0 0;
-  padding-left: 18px;
-}
-
-.workload-riesgos li {
-  margin-bottom: 3px;
+.wl-foot {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  color: var(--text-subtle);
 }
 
 /* ============================================================

@@ -9,6 +9,8 @@ interface Props {
   onClose: () => void;
 }
 
+type Lectura = WorkloadAnalysis['people'][number];
+
 const ESTADOS: Record<string, string> = {
   libre: 'is-success',
   ajustado: 'is-warning',
@@ -24,20 +26,50 @@ function plural(cantidad: number, singular: string, plural_: string) {
   return `${cantidad} ${cantidad === 1 ? singular : plural_}`;
 }
 
-function resumenCargas(persona: PersonLoad) {
-  const partes = [
-    `${persona.pendingHours} h pendientes`,
-    plural(persona.openTasks, 'tarea', 'tareas'),
-  ];
-  if (persona.unestimated) partes.push(`${persona.unestimated} sin estimar`);
-  if (persona.overdue) partes.push(plural(persona.overdue, 'vencida', 'vencidas'));
-  return partes.join(' · ');
+function hueco(horas: number) {
+  return horas < 0 ? `${Math.abs(horas)} h de más` : `${horas} h`;
 }
 
-// Un hueco negativo es carga de más: decirlo así se entiende mejor que «-12 h».
-function hueco(horas: number) {
-  if (horas < 0) return `${Math.abs(horas)} h por encima de su capacidad`;
-  return `${horas} h de hueco esta semana`;
+function Ficha({ persona, lectura }: { persona: PersonLoad; lectura?: Lectura }) {
+  return (
+    <article className="wl-card">
+      <header className="wl-card-head">
+        <strong title={persona.name}>{persona.name}</strong>
+        {lectura && <span className={`pill ${ESTADOS[lectura.estado] || ''}`}>{lectura.estado}</span>}
+        <span className="wl-when">
+          libre {cuando(lectura ? lectura.disponibleDesde : persona.freeFrom)}
+        </span>
+      </header>
+
+      <dl className="wl-stats">
+        <div>
+          <dt>Pendiente</dt>
+          <dd>{persona.pendingHours} h</dd>
+        </div>
+        <div>
+          <dt>Tareas</dt>
+          <dd>
+            {persona.openTasks}
+            {persona.unestimated > 0 && <em> · {persona.unestimated} sin estimar</em>}
+          </dd>
+        </div>
+        <div>
+          <dt>Vencidas</dt>
+          <dd className={persona.overdue > 0 ? 'is-danger' : ''}>{persona.overdue}</dd>
+        </div>
+        <div>
+          <dt>Hueco esta semana</dt>
+          <dd className={persona.slackHours < 0 ? 'is-danger' : ''}>{hueco(persona.slackHours)}</dd>
+        </div>
+      </dl>
+
+      {lectura && (
+        <p className="wl-why" title={lectura.motivo}>
+          {lectura.motivo}
+        </p>
+      )}
+    </article>
+  );
 }
 
 export default function WorkloadModal({ schedule, onClose }: Props) {
@@ -72,15 +104,38 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
     }
   }
 
-  const porPersona = new Map(analisis?.people.map((p) => [p.employeeId, p]) ?? []);
-  const mejor = analisis ? cargas.find((c) => c.employeeId === analisis.mejorOpcion.employeeId) : null;
+  const porPersona = new Map<number, Lectura>(
+    analisis?.people.map((p) => [p.employeeId, p]) ?? [],
+  );
+  const mejor = analisis
+    ? cargas.find((c) => c.employeeId === analisis.mejorOpcion.employeeId)
+    : null;
+
+  // Primero quienes pueden asumir algo, que es lo que se viene a buscar, y dentro de cada
+  // grupo el que menos carga arrastra.
+  const grupos = useMemo(() => {
+    const pueden: PersonLoad[] = [];
+    const no: PersonLoad[] = [];
+    seleccionadas.forEach((persona) => {
+      const lectura = porPersona.get(persona.employeeId);
+      (lectura?.puedeParalelo ? pueden : no).push(persona);
+    });
+    const porCarga = (a: PersonLoad, b: PersonLoad) => a.pendingHours - b.pendingHours;
+    return { pueden: pueden.sort(porCarga), no: no.sort(porCarga) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analisis, elegidos]);
 
   return (
     <div className="modal-overlay" onClick={() => !cargando && onClose()}>
-      <div className="modal modal-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div
+        className="modal modal-wide modal-tall"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="modal-head">
           <div className="panel-title">
-            <h2>Análisis de carga de trabajo</h2>
+            <h2>Análisis de carga</h2>
             <span className="count-chip">{seleccionadas.length}</span>
           </div>
           <button className="btn-ghost btn-icon" onClick={onClose} aria-label="Cerrar">
@@ -96,15 +151,18 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
             </div>
           )}
 
-          {!analisis && (
+          {!analisis && !cargando && (
             <>
-              <p className="browse-hint" style={{ padding: '0 0 10px' }}>
-                Elige a quién mirar. Las horas pendientes y los huecos salen de las tareas de Odoo;
-                la lectura de en quién cabe una tarea más la hace Claude con esos números.
+              <p className="wl-lead">
+                Elige a quién mirar. Las horas y los huecos salen de las tareas de Odoo; la lectura
+                de en quién cabe una tarea más la hace Claude con esos números.
               </p>
 
-              <div className="task-filters" style={{ padding: 0, border: 'none' }}>
-                <button className="btn-secondary btn-sm" onClick={() => setElegidos(new Set(cargas.map((c) => c.employeeId)))}>
+              <div className="wl-pick-actions">
+                <button
+                  className="btn-secondary btn-sm"
+                  onClick={() => setElegidos(new Set(cargas.map((c) => c.employeeId)))}
+                >
                   Todos
                 </button>
                 <button className="btn-secondary btn-sm" onClick={() => setElegidos(new Set())}>
@@ -112,7 +170,7 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
                 </button>
               </div>
 
-              <ul className="workload-pick">
+              <ul className="wl-pick">
                 {cargas.map((persona) => (
                   <li key={persona.employeeId}>
                     <label>
@@ -121,8 +179,13 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
                         checked={elegidos.has(persona.employeeId)}
                         onChange={() => alternar(persona.employeeId)}
                       />
-                      <span className="workload-name">{persona.name}</span>
-                      <span className="workload-meta">{resumenCargas(persona)}</span>
+                      <span className="wl-pick-name">{persona.name}</span>
+                      <span className="wl-pick-meta">
+                        {persona.pendingHours} h · {plural(persona.openTasks, 'tarea', 'tareas')}
+                        {persona.overdue > 0 && (
+                          <em className="is-danger"> · {persona.overdue} vencidas</em>
+                        )}
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -133,62 +196,69 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
           {cargando && (
             <div className="splash-inner" style={{ padding: 32 }}>
               <div className="spinner" />
-              <span>Leyendo el reparto y midiendo la carga de cada quien...</span>
+              <span>Midiendo la carga de cada quien...</span>
             </div>
           )}
 
           {analisis && !cargando && (
             <>
-              <p className="summary-text">{analisis.summary}</p>
+              <p className="wl-lead">{analisis.summary}</p>
 
               {mejor && (
-                <div className="alert alert-success" style={{ marginBottom: 12 }}>
-                  <IconCheck size={16} />
-                  <span>
-                    <strong>{mejor.name}</strong> es quien mejor puede asumir algo más.{' '}
-                    {analisis.mejorOpcion.porQue}
-                  </span>
+                <div className="wl-best">
+                  <IconCheck size={15} />
+                  <div>
+                    <strong>{mejor.name}</strong>
+                    <span>{analisis.mejorOpcion.porQue}</span>
+                  </div>
                 </div>
               )}
 
-              {seleccionadas.map((persona) => {
-                const lectura = porPersona.get(persona.employeeId);
-                return (
-                  <div className="workload-row" key={persona.employeeId}>
-                    <div className="workload-head">
-                      <strong>{persona.name}</strong>
-                      {lectura && (
-                        <span className={`pill ${ESTADOS[lectura.estado] || ''}`}>{lectura.estado}</span>
-                      )}
-                      {lectura && (
-                        <span className={`pill ${lectura.puedeParalelo ? 'is-brand' : ''}`}>
-                          {lectura.puedeParalelo ? 'admite algo en paralelo' : 'mejor no cargarle más'}
-                        </span>
-                      )}
-                    </div>
+              {grupos.pueden.length > 0 && (
+                <>
+                  <h3 className="wl-group">
+                    Pueden asumir algo <span>{grupos.pueden.length}</span>
+                  </h3>
+                  {grupos.pueden.map((persona) => (
+                    <Ficha
+                      key={persona.employeeId}
+                      persona={persona}
+                      lectura={porPersona.get(persona.employeeId)}
+                    />
+                  ))}
+                </>
+              )}
 
-                    <div className="workload-meta">
-                      {resumenCargas(persona)} · {hueco(persona.slackHours)} · libre{' '}
-                      {cuando(lectura ? lectura.disponibleDesde : persona.freeFrom)}
-                    </div>
-
-                    {lectura && <p className="workload-motivo">{lectura.motivo}</p>}
-                  </div>
-                );
-              })}
+              {grupos.no.length > 0 && (
+                <>
+                  <h3 className="wl-group">
+                    Mejor no cargarles más <span>{grupos.no.length}</span>
+                  </h3>
+                  {grupos.no.map((persona) => (
+                    <Ficha
+                      key={persona.employeeId}
+                      persona={persona}
+                      lectura={porPersona.get(persona.employeeId)}
+                    />
+                  ))}
+                </>
+              )}
 
               {analisis.riesgos.length > 0 && (
-                <div className="workload-riesgos">
-                  <strong>Riesgos</strong>
+                <details className="wl-risks">
+                  <summary>
+                    <IconAlert size={13} />
+                    Riesgos <span>{analisis.riesgos.length}</span>
+                  </summary>
                   <ul>
                     {analisis.riesgos.map((riesgo) => (
                       <li key={riesgo}>{riesgo}</li>
                     ))}
                   </ul>
-                </div>
+                </details>
               )}
 
-              <p className="browse-hint" style={{ padding: '10px 0 0' }}>
+              <p className="wl-foot">
                 Las cuentas son de Odoo; la lectura es de Claude. Conviene contrastarla antes de
                 mover tareas.
               </p>
@@ -204,7 +274,7 @@ export default function WorkloadModal({ schedule, onClose }: Props) {
           )}
           <button onClick={analizar} disabled={cargando || seleccionadas.length === 0}>
             <IconSparkle size={13} />
-            {analisis ? 'Rehacer análisis' : 'Analizar carga'}
+            {analisis ? 'Rehacer' : 'Analizar carga'}
           </button>
           <button className="btn-secondary btn-sm" onClick={onClose}>
             Cerrar
