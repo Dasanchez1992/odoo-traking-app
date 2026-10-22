@@ -254,6 +254,39 @@ export default function SettingsPage({ onClose }: Props) {
                 </div>
               )}
 
+              <div className="setting-row ai-key-row">
+                <div className="setting-text">
+                  <strong>Tema</strong>
+                  <span>
+                    Claro, oscuro, o el que tenga el sistema. Cambia al momento, también en la
+                    miniatura flotante.
+                  </span>
+                </div>
+                <div className="ai-key-form">
+                  <select
+                    value={settings.theme}
+                    onChange={async (e) => {
+                      setSaving(true);
+                      try {
+                        setSettings(
+                          await window.api.updateSettings({
+                            theme: e.target.value as AppSettings['theme'],
+                          }),
+                        );
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    aria-label="Tema de la aplicación"
+                  >
+                    <option value="sistema">Como el sistema</option>
+                    <option value="claro">Claro</option>
+                    <option value="oscuro">Oscuro</option>
+                  </select>
+                </div>
+              </div>
+
               <label className="setting-row">
                 <div className="setting-text">
                   <strong>Cronómetro flotante</strong>

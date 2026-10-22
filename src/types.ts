@@ -356,6 +356,7 @@ export interface AppSettings {
   floatingWidget: boolean;
   showReleaseNotes: boolean;
   aiEnabled: boolean;
+  theme: 'sistema' | 'claro' | 'oscuro';
   whisperModel: 'tiny' | 'base' | 'small';
   autoAttendance: boolean;
   /** Hora 'HH:MM' en zona de Ecuador. */

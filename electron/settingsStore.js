@@ -11,6 +11,8 @@ const DEFAULTS = {
   autoAttendance: false,
   autoCheckIn: '08:30',
   autoCheckOut: '17:30',
+  // Tema de la ventana: 'sistema' sigue al escritorio; 'claro' y 'oscuro' lo fijan.
+  theme: 'sistema',
   // Asistencia de IA (redacción, sugerencias y resúmenes).
   aiEnabled: true,
   // Modelo de Whisper para transcribir reuniones en local: tiny, base o small.

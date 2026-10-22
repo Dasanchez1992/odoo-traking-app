@@ -7,6 +7,7 @@ const {
   Notification,
   Tray,
   nativeImage,
+  nativeTheme,
   screen,
   session,
   shell,
@@ -409,6 +410,12 @@ function stopBackgroundRefresh() {
 // node_modules y el .desktop no serviría de nada.
 function startAtLoginSupported() {
   return process.platform !== 'linux' || app.isPackaged;
+}
+
+const TEMAS = { sistema: 'system', claro: 'light', oscuro: 'dark' };
+
+function applyTheme(tema) {
+  nativeTheme.themeSource = TEMAS[tema] || 'system';
 }
 
 function applyStartAtLogin(enabled) {
@@ -1247,6 +1254,7 @@ ipcMain.handle('settings:get', async () => ({
 ipcMain.handle('settings:update', async (_event, patch) => {
   const next = settingsStore.write(patch);
   floatingWidget = next.floatingWidget;
+  applyTheme(next.theme);
   applyStartAtLogin(next.startAtLogin);
   if (next.remindersEnabled) {
     reminders.start();
@@ -1305,6 +1313,7 @@ if (!gotLock) {
     }
 
     floatingWidget = settingsStore.read().floatingWidget;
+    applyTheme(settingsStore.read().theme);
     applyStartAtLogin(settingsStore.read().startAtLogin);
     reminders.start();
     if (settingsStore.read().autoAttendance) autoAttendance.start();
