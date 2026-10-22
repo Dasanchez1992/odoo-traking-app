@@ -29,6 +29,9 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - **Mías o todas:** las pestañas «Mis tareas» y «Tickets» llevan dentro un selector (Mías/Todas,
   Míos/Todos) para pasar a ver todo lo que hay abierto en Odoo, estés asignado o no, sin salir de
   la pestaña.
+- **Cambio de etapa:** el select del detalle de una tarea o un ticket guarda en Odoo al momento, y
+  lo dice: «Guardando en Odoo…» mientras va, «Guardado en Odoo» con el campo en verde un par de
+  segundos, y si Odoo lo rechaza vuelve a la etapa anterior con el aviso del error.
 - **Solo trabajo abierto:** las tareas cerradas (`state` en `1_done` / `1_canceled`) y los tickets con
   fecha de cierre o en etapa plegada no se consultan. Además hay filtros por etapa en ambas listas.
 - **Bandeja del sistema:** cerrar la ventana solo la oculta; la app sigue corriendo para poder emitir

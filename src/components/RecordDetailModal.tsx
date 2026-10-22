@@ -40,6 +40,8 @@ export default function RecordDetailModal({
   onChanged,
 }: Props) {
   const [stages, setStages] = useState<TaskStage[]>([]);
+  // Qué está pasando con la etapa: sin esto, cambiar el select no se nota y nadie sabe si guardó.
+  const [stageState, setStageState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [stageId, setStageId] = useState<number | null>(stageInicial);
   const [messages, setMessages] = useState<OdooMessage[]>([]);
   const [users, setUsers] = useState<MentionableUser[]>([]);
@@ -90,14 +92,25 @@ export default function RecordDetailModal({
     const anterior = stageId;
     setStageId(nuevo);
     setError(null);
+    setStageState('saving');
     try {
       await window.api.setStage(kind, id, nuevo);
+      setStageState('saved');
       onChanged();
     } catch (err) {
+      // Si Odoo lo rechaza, el select vuelve a lo que de verdad hay guardado.
       setStageId(anterior);
+      setStageState('error');
       setError(err instanceof Error ? err.message : 'No se pudo cambiar la etapa');
     }
   }
+
+  // El «guardado» se queda un rato a la vista y se va solo; el error espera a otro intento.
+  useEffect(() => {
+    if (stageState !== 'saved') return undefined;
+    const id_ = setTimeout(() => setStageState('idle'), 4000);
+    return () => clearTimeout(id_);
+  }, [stageState]);
 
   async function handleDraft() {
     setDrafting(true);
@@ -200,14 +213,35 @@ export default function RecordDetailModal({
           )}
 
           <div className="field">
-            <label className="field-label" htmlFor="record-stage">
-              Etapa
-            </label>
+            <div className="field-head">
+              <label className="field-label" htmlFor="record-stage">
+                Etapa
+              </label>
+              {stageState === 'saving' && (
+                <span className="field-status" role="status">
+                  <span className="spinner is-inline" />
+                  Guardando en Odoo...
+                </span>
+              )}
+              {stageState === 'saved' && (
+                <span className="field-status is-ok" role="status">
+                  <IconCheck size={12} />
+                  Guardado en Odoo
+                </span>
+              )}
+              {stageState === 'error' && (
+                <span className="field-status is-bad" role="status">
+                  <IconAlert size={12} />
+                  No se guardó
+                </span>
+              )}
+            </div>
             <select
               id="record-stage"
+              className={stageState === 'saved' ? 'is-saved' : ''}
               value={stageId ?? ''}
               onChange={(e) => handleStageChange(Number(e.target.value))}
-              disabled={loading || stages.length === 0}
+              disabled={loading || stageState === 'saving' || stages.length === 0}
             >
               {stages.length === 0 && <option value="">Sin etapas disponibles</option>}
               {stages.map((stage) => (
@@ -216,7 +250,9 @@ export default function RecordDetailModal({
                 </option>
               ))}
             </select>
-            <span className="field-hint">El cambio se guarda en Odoo al seleccionarlo.</span>
+            {stageState === 'idle' && (
+              <span className="field-hint">El cambio se guarda en Odoo al seleccionarlo.</span>
+            )}
           </div>
 
           {kind === 'ticket' && aiOk && (
