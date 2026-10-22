@@ -326,6 +326,21 @@ export interface TeamMemberSummary {
   text: string;
 }
 
+/** Lectura de la IA sobre la carga de trabajo del equipo. */
+export interface WorkloadAnalysis {
+  summary: string;
+  people: {
+    employeeId: number;
+    estado: 'libre' | 'ajustado' | 'saturado';
+    puedeParalelo: boolean;
+    /** «ahora» o una fecha AAAA-MM-DD. */
+    disponibleDesde: string;
+    motivo: string;
+  }[];
+  mejorOpcion: { employeeId: number; porQue: string };
+  riesgos: string[];
+}
+
 export interface TicketTriage {
   summary: string;
   priority: string;
@@ -416,6 +431,7 @@ export interface ElectronApi {
   }) => Promise<TaskSuggestion>;
   getWeeklySummary: () => Promise<WeeklySummary>;
   getTeamMemberSummary: (employeeId: number) => Promise<TeamMemberSummary>;
+  analyzeWorkload: (payload: { people: unknown[] }) => Promise<WorkloadAnalysis>;
   triageTicket: (ticketId: number) => Promise<TicketTriage>;
 
   getProjects: () => Promise<OdooProject[]>;

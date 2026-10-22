@@ -847,6 +847,22 @@ ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectI
   return { lineId, ...sugerencia };
 });
 
+// Las cuentas las hace la ventana (es donde vive el reparto); aquí solo se acota lo que puede
+// llegar a la API y se pide el análisis.
+ipcMain.handle('ai:workload', async (_event, payload = {}) => {
+  requireAi();
+  const gente = Array.isArray(payload.people) ? payload.people.slice(0, 30) : [];
+  if (gente.length === 0) throw new Error('Elige al menos a una persona para analizar.');
+  return ai.workloadAnalysis({
+    today: ecuadorDateKey(new Date()),
+    people: gente.map((persona) => ({
+      ...persona,
+      tasks: Array.isArray(persona.tasks) ? persona.tasks.slice(0, 12) : [],
+      byWeek: Array.isArray(persona.byWeek) ? persona.byWeek.slice(0, 10) : [],
+    })),
+  });
+});
+
 ipcMain.handle('ai:team-summary', async (_event, employeeId) => {
   const c = requireAi();
   const datos = await odooService.fetchEmployeeWeek(c, employeeId);

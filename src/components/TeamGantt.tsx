@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { TeamSchedule } from '../types';
 import { GanttBar, barPosition, buildGantt, isWeekend } from '../lib/gantt';
 import { formatOdooDateShort } from '../lib/odooDate';
-import { IconAlert, IconRefresh, IconSearch, IconTasks } from './Icons';
+import { IconAlert, IconRefresh, IconSearch, IconSparkle, IconTasks } from './Icons';
+import WorkloadModal from './WorkloadModal';
 
 const HORIZONS = [
   { days: 7, label: '7 días' },
@@ -54,6 +55,8 @@ export default function TeamGantt() {
   const [onlyBusy, setOnlyBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiOk, setAiOk] = useState(false);
+  const [analizando, setAnalizando] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -69,6 +72,10 @@ export default function TeamGantt() {
 
   useEffect(() => {
     load();
+    window.api
+      .getAiStatus()
+      .then((estado) => setAiOk(estado.available))
+      .catch(() => setAiOk(false));
   }, []);
 
   const { dayKeys, rows, today } = useMemo(() => {
@@ -118,6 +125,17 @@ export default function TeamGantt() {
               </button>
             ))}
           </div>
+          {aiOk && (
+            <button
+              className="btn-secondary btn-sm"
+              onClick={() => setAnalizando(true)}
+              disabled={loading || !data}
+              title="Analizar en quién cabe una tarea más y desde cuándo"
+            >
+              <IconSparkle size={13} />
+              Análisis de carga
+            </button>
+          )}
           <button className="btn-secondary btn-sm" onClick={load} disabled={loading}>
             <IconRefresh size={13} />
             Actualizar
@@ -299,6 +317,10 @@ export default function TeamGantt() {
             lo ya planificado. «Ahora» es la última tarea a la que la persona imputó tiempo hoy.
           </p>
         </>
+      )}
+
+      {analizando && data && (
+        <WorkloadModal schedule={data} onClose={() => setAnalizando(false)} />
       )}
     </section>
   );

@@ -246,6 +246,93 @@ async function weeklySummary({ since, until, byProject }) {
 
 // 4. Triaje de tickets ------------------------------------------------------------------------
 
+const ESQUEMA_CARGA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    people: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          employeeId: { type: 'integer' },
+          estado: { type: 'string', enum: ['libre', 'ajustado', 'saturado'] },
+          puedeParalelo: { type: 'boolean' },
+          disponibleDesde: { type: 'string' },
+          motivo: { type: 'string' },
+        },
+        required: ['employeeId', 'estado', 'puedeParalelo', 'disponibleDesde', 'motivo'],
+        additionalProperties: false,
+      },
+    },
+    mejorOpcion: {
+      type: 'object',
+      properties: {
+        employeeId: { type: 'integer' },
+        porQue: { type: 'string' },
+      },
+      required: ['employeeId', 'porQue'],
+      additionalProperties: false,
+    },
+    riesgos: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['summary', 'people', 'mejorOpcion', 'riesgos'],
+  additionalProperties: false,
+};
+
+// Las cuentas (horas pendientes, vencidas, hueco por semana) vienen hechas de la app: aquí solo
+// se pide la lectura, que es lo que una persona tardaría en sacar mirando el reparto.
+async function workloadAnalysis({ today, people }) {
+  const fichas = people
+    .map((persona) => {
+      const semanas = persona.byWeek
+        .map((s) => `${s.week}: ${s.hours} h`)
+        .join('; ') || 'sin carga fechada';
+      const tareas = persona.tasks
+        .map(
+          (t) =>
+            `    - ${t.name}${t.project ? ` (${t.project})` : ''}: ${t.pendingHours} h` +
+            `${t.estimated ? '' : ' [sin estimar]'}` +
+            `${t.deadline ? `, vence ${t.deadline}${t.overdue ? ' — VENCIDA' : ''}` : ', sin fecha'}`,
+        )
+        .join('\n') || '    (sin tareas abiertas)';
+
+      return (
+        `#${persona.employeeId} ${persona.name}${persona.department ? ` — ${persona.department}` : ''}\n` +
+        `  Ahora mismo: ${persona.currentTask || 'sin tarea en curso'}\n` +
+        `  ${persona.openTasks} tareas abiertas, ${persona.pendingHours} h pendientes` +
+        `${persona.unestimated ? `, ${persona.unestimated} sin estimar` : ''}` +
+        `${persona.overdue ? `, ${persona.overdue} vencidas` : ''}\n` +
+        `  Hueco en lo que queda de esta semana: ${persona.slackHours} h (capacidad de 8 h al día)\n` +
+        `  Carga por semana: ${semanas}\n` +
+        `  Primera semana con hueco según las cuentas: ${persona.freeFrom}\n` +
+        `  Tareas:\n${tareas}`
+      );
+    })
+    .join('\n\n');
+
+  return ask({
+    model: MODELO_LARGO,
+    maxTokens: 2500,
+    effort: 'medium',
+    schema: ESQUEMA_CARGA,
+    system:
+      'Analizas la carga de trabajo de un equipo de consultoría Odoo para quien tiene que ' +
+      'repartir una tarea nueva. Por cada persona devuelves: estado (libre, ajustado o ' +
+      'saturado), si se le puede dar algo en paralelo ahora mismo, desde cuándo tendría hueco ' +
+      '(«ahora» o una fecha AAAA-MM-DD) y el motivo en una frase, citando las horas o las ' +
+      'tareas concretas en que te basas. Además, un resumen de dos o tres frases, la mejor ' +
+      'opción para cargarle algo, y los riesgos que veas (tareas vencidas, semanas por encima ' +
+      'de 40 h, trabajo sin estimar). Las cuentas ya vienen hechas: no las rehagas ni las ' +
+      'contradigas, úsalas. Español neutro, sin juzgar a las personas: hablas de carga, no de ' +
+      'rendimiento. No inventes tareas ni fechas que no estén en los datos.',
+    prompt:
+      `Hoy es ${today}. Capacidad de referencia: 8 h al día, 40 h por semana.\n\n` +
+      `Personas a analizar:\n\n${fichas}\n\n` +
+      'Haz el análisis.',
+  });
+}
+
 const ESQUEMA_TRIAJE = {
   type: 'object',
   properties: {
@@ -340,6 +427,7 @@ async function summarizeMeeting({ title, date, durationMs, transcript }) {
 }
 
 module.exports = {
+  workloadAnalysis,
   teamMemberSummary,
   setCompanyKey,
   keySource,

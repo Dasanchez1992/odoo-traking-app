@@ -116,6 +116,21 @@ La app no enseña nada de esto a la persona medida: ni el interruptor —lo deci
 Odoo— ni su propio detalle. Los datos se revisan desde Equipo o desde el menú de Odoo, con el
 permiso correspondiente.
 
+### Análisis de carga de trabajo
+
+En la pestaña Reparto, un botón abre el análisis: se eligen las personas y sale en qué anda cada
+una, a quién le cabe una tarea más y desde cuándo tendría hueco.
+
+Las cuentas no las hace la IA: la app suma, por persona, las horas que faltan de cada tarea
+abierta (asignadas menos imputadas, 4 h para las que no tienen estimación), cuántas están
+vencidas, cómo queda la carga semana a semana y cuánto hueco le queda en la semana en curso
+—contando solo los días hábiles que faltan, a 8 h por día—. Con esos números, Claude escribe la
+lectura: estado de cada quien (libre, ajustado o saturado), si admite algo en paralelo, desde
+cuándo, el motivo, la mejor opción para cargarle la tarea nueva y los riesgos.
+
+El prompt le prohíbe rehacer las cuentas, inventar tareas y opinar sobre el rendimiento de nadie:
+habla de carga, no de personas.
+
 ### El nombre anterior
 
 La aplicación se llamaba **Elideysi** hasta la versión 1.7.0. El `appId`

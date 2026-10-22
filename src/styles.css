@@ -668,6 +668,12 @@ input:focus {
   border-color: transparent;
 }
 
+.pill.is-warning {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  border-color: transparent;
+}
+
 .pill.is-brand {
   background: var(--brand-50);
   color: var(--brand-600);
@@ -2210,6 +2216,75 @@ textarea:focus {
   .usage-row {
     grid-template-columns: minmax(0, 1fr) 120px;
   }
+}
+
+/* Análisis de carga de trabajo */
+.workload-pick {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.workload-pick label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.workload-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.workload-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.workload-pick .workload-meta {
+  margin-left: auto;
+  text-align: right;
+}
+
+.workload-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.workload-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.workload-motivo {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workload-riesgos {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--warning-bg);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.workload-riesgos ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.workload-riesgos li {
+  margin-bottom: 3px;
 }
 
 /* ============================================================
