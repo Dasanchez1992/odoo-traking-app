@@ -341,6 +341,64 @@ export interface WorkloadAnalysis {
   riesgos: string[];
 }
 
+/** Estado de la conexión con GitHub, para la pantalla de configuración. */
+export interface GithubStatus {
+  configured: boolean;
+  user?: string;
+  org: string;
+  /** Token enmascarado, solo para mostrarlo. */
+  token?: string;
+  scopes?: string[];
+  /** Si el token alcanza a ver la organización. */
+  orgVisible?: boolean;
+}
+
+export type PullRequestScope = 'mios' | 'revisar' | 'organizacion';
+export type PullRequestState = 'abiertos' | 'cerrados' | 'fusionados' | 'todos';
+
+export interface PullRequest {
+  id: number;
+  number: number;
+  title: string;
+  repo: string;
+  url: string;
+  state: 'open' | 'merged' | 'closed';
+  draft: boolean;
+  author: string;
+  authorAvatar: string | null;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  mergedAt: string | null;
+  comments: number;
+  labels: string[];
+  body: string;
+}
+
+export interface PullRequestList {
+  scope: PullRequestScope;
+  state: PullRequestState;
+  org: string;
+  total: number;
+  /** GitHub cortó la búsqueda por tiempo. */
+  incomplete: boolean;
+  items: PullRequest[];
+}
+
+export interface PullRequestDetail {
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+  commits: number;
+  mergeable: boolean | null;
+  mergeableState: string | null;
+  baseRef: string | null;
+  headRef: string | null;
+  requestedReviewers: string[];
+  reviews: { login: string; state: string }[];
+  reviewComments: number;
+}
+
 export interface TicketTriage {
   summary: string;
   priority: string;
@@ -433,6 +491,20 @@ export interface ElectronApi {
   getWeeklySummary: () => Promise<WeeklySummary>;
   getTeamMemberSummary: (employeeId: number) => Promise<TeamMemberSummary>;
   analyzeWorkload: (payload: { people: unknown[] }) => Promise<WorkloadAnalysis>;
+
+  getGithubStatus: () => Promise<GithubStatus>;
+  saveGithubCredentials: (datos: {
+    user: string;
+    token: string;
+    org: string;
+  }) => Promise<GithubStatus>;
+  clearGithubCredentials: () => Promise<GithubStatus>;
+  getPullRequests: (filtros: {
+    scope: PullRequestScope;
+    state: PullRequestState;
+  }) => Promise<PullRequestList>;
+  getPullRequestDetail: (datos: { repo: string; number: number }) => Promise<PullRequestDetail>;
+  openInGithub: (url: string) => Promise<string>;
   triageTicket: (ticketId: number) => Promise<TicketTriage>;
 
   getProjects: () => Promise<OdooProject[]>;

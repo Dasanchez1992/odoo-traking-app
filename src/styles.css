@@ -2278,6 +2278,177 @@ select.is-saved {
   }
 }
 
+/* Pull requests */
+.github-form {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.github-form input[type='text'] {
+  width: 150px;
+}
+
+.pr-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.pr-item:last-child {
+  border-bottom: none;
+}
+
+.pr-item.is-open {
+  background: var(--surface-sunken);
+}
+
+.pr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 18px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pr-row:hover {
+  background: var(--surface-hover);
+}
+
+.pr-row > svg {
+  flex: none;
+  color: var(--text-subtle);
+  transition: transform 0.15s var(--ease);
+}
+
+.pr-row > svg.is-open {
+  transform: rotate(180deg);
+}
+
+.pr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pr-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-draft {
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pr-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-label {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-style: normal;
+  font-size: 10.5px;
+}
+
+.pr-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pr-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 0 18px 16px 41px;
+}
+
+.pr-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.pr-cargando {
+  font-size: 12.5px;
+  color: var(--text-subtle);
+}
+
+.pr-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  width: 100%;
+  max-width: 420px;
+}
+
+.pr-stats dt {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 1px;
+}
+
+.pr-stats dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-mas {
+  color: var(--success-fg);
+}
+
+.pr-menos {
+  color: var(--danger-fg);
+}
+
+.pr-revisiones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* Análisis de carga de trabajo */
 .modal-tall {
   max-height: 86vh;

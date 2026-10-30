@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AiStatus, AppSettings, UpdateStatus } from '../types';
+import { AiStatus, AppSettings, GithubStatus, UpdateStatus } from '../types';
 import { IconAlert, IconBack, IconCheck, IconSparkle } from './Icons';
 
 interface Props {
@@ -51,6 +51,11 @@ export default function SettingsPage({ onClose }: Props) {
 
   const [ai, setAi] = useState<AiStatus | null>(null);
   const [aiKey, setAiKey] = useState('');
+  const [github, setGithub] = useState<GithubStatus | null>(null);
+  const [ghUser, setGhUser] = useState('');
+  const [ghOrg, setGhOrg] = useState('');
+  const [ghToken, setGhToken] = useState('');
+  const [ghSaving, setGhSaving] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -101,6 +106,44 @@ export default function SettingsPage({ onClose }: Props) {
       setSettings(await window.api.updateSettings({ [key]: value }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la hora');
+    }
+  }
+
+  useEffect(() => {
+    window.api
+      .getGithubStatus()
+      .then((estado) => {
+        setGithub(estado);
+        setGhOrg(estado.org);
+      })
+      .catch(() => setGithub(null));
+  }, []);
+
+  async function guardarGithub() {
+    setGhSaving(true);
+    setError(null);
+    try {
+      const estado = await window.api.saveGithubCredentials({
+        user: ghUser.trim(),
+        token: ghToken.trim(),
+        org: ghOrg.trim(),
+      });
+      setGithub(estado);
+      setGhToken('');
+      setGhUser('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar el acceso a GitHub');
+    } finally {
+      setGhSaving(false);
+    }
+  }
+
+  async function quitarGithub() {
+    setError(null);
+    try {
+      setGithub(await window.api.clearGithubCredentials());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo quitar el acceso a GitHub');
     }
   }
 
@@ -414,6 +457,79 @@ export default function SettingsPage({ onClose }: Props) {
                   )}
                 </div>
               )}
+
+              <div className="setting-row ai-key-row">
+                <div className="setting-text">
+                  <strong>GitHub</strong>
+                  <span>
+                    Para ver tus pull requests de la organización en la pestaña «Mis PRs». El token
+                    se guarda cifrado en este equipo y solo se usa para leer: la app no escribe nada
+                    en GitHub. Se crea en github.com → Settings → Developer settings → Tokens, con
+                    permiso de lectura sobre los repositorios (ámbito «repo» si son privados).
+                  </span>
+                  {github?.configured && github.scopes && !github.scopes.includes('repo') && (
+                    <span>
+                      Ojo: ese token no tiene el ámbito «repo», así que no verás los pull requests
+                      de repositorios privados.
+                    </span>
+                  )}
+                  {github?.configured && github.orgVisible === false && (
+                    <span>
+                      El token no alcanza a ver la organización «{github.org}»; revisa que sea la
+                      correcta y que el token tenga acceso.
+                    </span>
+                  )}
+                </div>
+
+                {github?.configured ? (
+                  <div className="ai-key-saved">
+                    <span className="pill is-brand">
+                      <IconCheck size={12} />
+                      {github.user} · {github.org} {github.token ? `(${github.token})` : ''}
+                    </span>
+                    <button className="btn-secondary btn-sm" onClick={quitarGithub}>
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="ai-key-form github-form">
+                    <input
+                      type="text"
+                      placeholder="usuario de GitHub"
+                      value={ghUser}
+                      onChange={(e) => setGhUser(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Usuario de GitHub"
+                    />
+                    <input
+                      type="text"
+                      placeholder="organización"
+                      value={ghOrg}
+                      onChange={(e) => setGhOrg(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Organización de GitHub"
+                    />
+                    <input
+                      type="password"
+                      placeholder="token"
+                      value={ghToken}
+                      onChange={(e) => setGhToken(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Token de GitHub"
+                    />
+                    <button
+                      className="btn-secondary btn-sm"
+                      onClick={guardarGithub}
+                      disabled={ghSaving || ghUser.trim().length < 2 || ghToken.trim().length < 10}
+                    >
+                      {ghSaving ? 'Comprobando...' : 'Guardar'}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <label className="setting-row">
                 <div className="setting-text">

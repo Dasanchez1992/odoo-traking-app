@@ -41,6 +41,13 @@ contextBridge.exposeInMainWorld('api', {
   getWeeklySummary: () => ipcRenderer.invoke('ai:weekly-summary'),
   getTeamMemberSummary: (employeeId) => ipcRenderer.invoke('ai:team-summary', employeeId),
   analyzeWorkload: (payload) => ipcRenderer.invoke('ai:workload', payload),
+
+  getGithubStatus: () => ipcRenderer.invoke('github:status'),
+  saveGithubCredentials: (datos) => ipcRenderer.invoke('github:save', datos),
+  clearGithubCredentials: () => ipcRenderer.invoke('github:clear'),
+  getPullRequests: (filtros) => ipcRenderer.invoke('github:prs', filtros),
+  getPullRequestDetail: (datos) => ipcRenderer.invoke('github:pr-detail', datos),
+  openInGithub: (url) => ipcRenderer.invoke('github:open', url),
   triageTicket: (ticketId) => ipcRenderer.invoke('ai:triage-ticket', ticketId),
 
   getProjects: () => ipcRenderer.invoke('projects:list'),

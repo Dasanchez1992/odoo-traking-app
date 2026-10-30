@@ -31,6 +31,8 @@ const { createUsageTracker } = require('./usageTracker');
 const transcribe = require('./transcribeService');
 const ai = require('./aiService');
 const aiKeyStore = require('./aiKeyStore');
+const githubStore = require('./githubStore');
+const github = require('./githubService');
 const {
   setupAutoUpdater,
   checkForUpdatesNow,
@@ -856,6 +858,77 @@ ipcMain.handle('ai:suggest-task', async (_event, { lineId, description, projectI
 
 // Las cuentas las hace la ventana (es donde vive el reparto); aquí solo se acota lo que puede
 // llegar a la API y se pide el análisis.
+// --- GitHub ------------------------------------------------------------------------------------
+// Solo lectura y con el token de cada quien: la app no escribe nada en GitHub.
+function githubCreds() {
+  const datos = githubStore.load();
+  if (!datos) {
+    throw new Error('Configura tu usuario y token de GitHub en Configuración.');
+  }
+  return datos;
+}
+
+ipcMain.handle('github:status', async () => {
+  const datos = githubStore.load();
+  if (!datos) return { configured: false, org: githubStore.ORG_POR_DEFECTO };
+  return {
+    configured: true,
+    user: datos.user,
+    org: datos.org,
+    token: githubStore.mask(datos.token),
+    scopes: datos.scopes || [],
+    orgVisible: datos.orgVisible !== false,
+  };
+});
+
+ipcMain.handle('github:save', async (_event, { user, token, org } = {}) => {
+  const organizacion = String(org || '').trim() || githubStore.ORG_POR_DEFECTO;
+  // Se comprueba antes de guardar: un token malo se descubre aquí y no tres días después.
+  const comprobado = await github.verifyCredentials({ user, token, org: organizacion });
+  githubStore.save({ user: comprobado.login, token, org: organizacion });
+  const guardado = githubStore.load();
+  githubStore.save({ ...guardado, scopes: comprobado.scopes, orgVisible: comprobado.orgVisible });
+  return {
+    configured: true,
+    user: comprobado.login,
+    org: organizacion,
+    token: githubStore.mask(token),
+    scopes: comprobado.scopes,
+    orgVisible: comprobado.orgVisible,
+  };
+});
+
+ipcMain.handle('github:clear', async () => {
+  githubStore.clear();
+  return { configured: false, org: githubStore.ORG_POR_DEFECTO };
+});
+
+ipcMain.handle('github:prs', async (_event, { scope, state } = {}) => {
+  const datos = githubCreds();
+  return github.searchPullRequests({
+    token: datos.token,
+    user: datos.user,
+    org: datos.org,
+    scope,
+    state,
+  });
+});
+
+// Abrir en el navegador, pero solo github.com: la ventana no decide qué se abre fuera.
+ipcMain.handle('github:open', async (_event, url) => {
+  const destino = String(url || '');
+  if (!/^https:\/\/github\.com\/[\w.\-/#?=&]*$/.test(destino)) {
+    throw new Error('Esa dirección no es de GitHub');
+  }
+  await shell.openExternal(destino);
+  return destino;
+});
+
+ipcMain.handle('github:pr-detail', async (_event, { repo, number } = {}) => {
+  const datos = githubCreds();
+  return github.pullRequestDetail({ token: datos.token, repo, number });
+});
+
 ipcMain.handle('ai:workload', async (_event, payload = {}) => {
   requireAi();
   const gente = Array.isArray(payload.people) ? payload.people.slice(0, 30) : [];

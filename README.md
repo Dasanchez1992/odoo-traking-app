@@ -16,6 +16,8 @@ App de escritorio (Electron + React + TypeScript) que se conecta a una instancia
 - Registrar tiempo sin tarea contra un proyecto y asignarle la tarea después, como en Odoo.
 - Medir el tiempo de uso de aplicaciones y dejar que quien tenga el permiso lo revise por persona
   (día, semana o mes) desde la pestaña Equipo.
+- Ver los pull requests propios (o los de toda la organización) de GitHub, por estado, sin salir
+  de la app.
 - Arrancar junto con el sistema operativo y quedarse en la bandeja del sistema.
 
 ## Comportamiento de la aplicación
@@ -136,6 +138,22 @@ cuándo, el motivo, la mejor opción para cargarle la tarea nueva y los riesgos.
 
 El prompt le prohíbe rehacer las cuentas, inventar tareas y opinar sobre el rendimiento de nadie:
 habla de carga, no de personas.
+
+### Mis PRs (GitHub)
+
+Pestaña propia, al lado de «Mis tickets», para quien tenga GitHub configurado en Configuración:
+usuario, organización (`nosolotec` por defecto) y un token personal. El token se comprueba contra
+la API al guardarlo —que exista, que sea de ese usuario y que alcance a ver la organización— y se
+guarda cifrado con `safeStorage` en `github.dat`, igual que la sesión de Odoo.
+
+La lista sale de la búsqueda de GitHub (`/search/issues`), ordenada por actividad reciente, con
+dos filtros: estado (abiertos primero, fusionados, cerrados o todos) y alcance (los míos, los que
+me toca revisar, o todos los de la organización). Al desplegar un pull request se piden sus
+detalles: tamaño del cambio, archivos, commits, rama destino, revisiones con su veredicto y aviso
+si GitHub no lo puede fusionar.
+
+Es solo lectura: la app no escribe nada en GitHub, y lo único que abre fuera son direcciones de
+`github.com`, comprobadas en el proceso principal.
 
 ### El nombre anterior
 

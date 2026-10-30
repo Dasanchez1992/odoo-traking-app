@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { OdooTask, OdooUser, TimerState } from '../types';
 import TaskList from '../components/TaskList';
 import AllTasksPanel from '../components/AllTasksPanel';
+import PullRequestsPanel from '../components/PullRequestsPanel';
 import Segmented from '../components/Segmented';
 import { Scope } from '../lib/scope';
 import AllTicketsPanel from '../components/AllTicketsPanel';
@@ -71,6 +72,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [tab, setTab] = useState<
     | 'tasks'
     | 'tickets'
+    | 'prs'
     | 'activities'
     | 'meetings'
     | 'productivity'
@@ -82,6 +84,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [ticketScope, setTicketScope] = useState<Scope>('mias');
   const [canManageTeam, setCanManageTeam] = useState(false);
   const [canReviewUsage, setCanReviewUsage] = useState(false);
+  const [githubOk, setGithubOk] = useState(false);
 
   // El activo es el único que corre; los demás quedaron en pausa al cambiar de tarea.
   const timer = timers.find((t) => t.segmentStartedAt !== null) ?? timers[0] ?? null;
@@ -142,6 +145,11 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     window.api.getPendingReleaseNotes().then(setReleaseNotes).catch(() => {});
     window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
     window.api.canReviewUsage().then(setCanReviewUsage).catch(() => setCanReviewUsage(false));
+    // La pestaña de PRs solo aparece para quien tenga GitHub configurado.
+    window.api
+      .getGithubStatus()
+      .then((estado) => setGithubOk(estado.configured))
+      .catch(() => setGithubOk(false));
     return () => {
       unsubscribe();
       unsubscribeStop();
@@ -332,6 +340,16 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
             >
               Mis tickets
             </button>
+            {githubOk && (
+              <button
+                className={`tab ${tab === 'prs' ? 'is-active' : ''}`}
+                onClick={() => setTab('prs')}
+                role="tab"
+                aria-selected={tab === 'prs'}
+              >
+                Mis PRs
+              </button>
+            )}
             <button
               className={`tab ${tab === 'activities' ? 'is-active' : ''}`}
               onClick={() => setTab('activities')}
@@ -450,6 +468,8 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
               <ActivityList refreshSignal={refreshSignal} />
             </section>
           )}
+
+          {tab === 'prs' && githubOk && <PullRequestsPanel refreshSignal={refreshSignal} />}
 
           {tab === 'meetings' && <MeetingsPanel />}
 
