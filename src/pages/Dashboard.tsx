@@ -86,6 +86,15 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
   const [canReviewUsage, setCanReviewUsage] = useState(false);
   const [githubOk, setGithubOk] = useState(false);
 
+  // La pestaña de PRs solo aparece para quien tenga GitHub configurado. Se vuelve a mirar al
+  // salir de Configuración: si no, el token recién guardado no se notaría hasta reiniciar.
+  function revisarGithub() {
+    window.api
+      .getGithubStatus()
+      .then((estado) => setGithubOk(estado.configured))
+      .catch(() => setGithubOk(false));
+  }
+
   // El activo es el único que corre; los demás quedaron en pausa al cambiar de tarea.
   const timer = timers.find((t) => t.segmentStartedAt !== null) ?? timers[0] ?? null;
 
@@ -145,11 +154,7 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
     window.api.getPendingReleaseNotes().then(setReleaseNotes).catch(() => {});
     window.api.canManageTeam().then(setCanManageTeam).catch(() => setCanManageTeam(false));
     window.api.canReviewUsage().then(setCanReviewUsage).catch(() => setCanReviewUsage(false));
-    // La pestaña de PRs solo aparece para quien tenga GitHub configurado.
-    window.api
-      .getGithubStatus()
-      .then((estado) => setGithubOk(estado.configured))
-      .catch(() => setGithubOk(false));
+    revisarGithub();
     return () => {
       unsubscribe();
       unsubscribeStop();
@@ -266,7 +271,12 @@ export default function Dashboard({ user, onLoggedOut }: Props) {
       <main className="app-main">
         <div className="app-content">
           {showSettings ? (
-            <SettingsPage onClose={() => setShowSettings(false)} />
+            <SettingsPage
+              onClose={() => {
+                setShowSettings(false);
+                revisarGithub();
+              }}
+            />
           ) : (
           <>
           <div className="page-head">
