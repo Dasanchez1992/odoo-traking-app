@@ -2214,7 +2214,7 @@ select.is-saved {
   cursor: pointer;
 }
 
-.usage-row:hover {
+.usage-row:hover:not(:disabled) {
   background: var(--surface-hover);
 }
 
@@ -2317,7 +2317,10 @@ select.is-saved {
   cursor: pointer;
 }
 
-.pr-row:hover {
+/* El estilo global de los botones pinta el fondo de azul al pasar por encima, y sobre una fila
+   de lista el texto deja de leerse. Mismo peso de selector («:not(:disabled)») para ganarle. */
+.pr-row:hover:not(:disabled),
+.meeting-row:hover:not(:disabled) {
   background: var(--surface-hover);
 }
 
