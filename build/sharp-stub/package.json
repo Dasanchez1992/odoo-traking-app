@@ -1,0 +1,6 @@
+{
+  "name": "sharp",
+  "version": "0.0.0-elipsys-stub",
+  "description": "Relleno de sharp: la app no procesa imágenes y los binarios reales pesan decenas de MB",
+  "main": "index.js"
+}

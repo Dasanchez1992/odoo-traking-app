@@ -40,6 +40,18 @@ const cubre = (nombre) =>
 
 const faltan = cierreDe('@huggingface/transformers').filter((n) => !cubre(n)).sort();
 
+// Whisper importa «sharp» aunque solo lo use para imágenes: el instalador lleva un relleno en
+// su sitio, fuera del asar, en vez de decenas de megas de binarios que nadie va a usar.
+const recursos = paquete.build.extraResources || [];
+const relleno = recursos.some(
+  (r) => r && r.to === 'app.asar.unpacked/node_modules/sharp' && fs.existsSync(path.join(raiz, r.from, 'package.json')),
+);
+if (!relleno) {
+  console.error('Falta el relleno de sharp en build.extraResources (a app.asar.unpacked/node_modules/sharp).');
+  console.error('Sin él, Whisper no carga en la app instalada: importa «sharp» de forma estática.');
+  process.exit(1);
+}
+
 if (faltan.length) {
   console.error('Estos paquetes hacen falta para transcribir y no están en build.asarUnpack:');
   faltan.forEach((n) => console.error(`  node_modules/${n}/**`));

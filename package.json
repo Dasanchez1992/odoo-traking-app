@@ -49,7 +49,8 @@
       "package.json",
       "!node_modules/sharp/**",
       "!node_modules/@img/**",
-      "!node_modules/onnxruntime-web/dist/**"
+      "!node_modules/onnxruntime-web/dist/**",
+      "!node_modules/sharp/node_modules/**"
     ],
     "publish": [
       {
@@ -131,6 +132,12 @@
       "node_modules/sprintf-js/**",
       "node_modules/type-fest/**",
       "node_modules/undici-types/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build/sharp-stub",
+        "to": "app.asar.unpacked/node_modules/sharp"
+      }
     ]
   }
 }
