@@ -13,7 +13,8 @@
     "dist": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
     "check:ipc": "node scripts/check-ipc.js",
-    "dist:deb": "npm run build && electron-builder --linux deb"
+    "dist:deb": "npm run build && electron-builder --linux deb",
+    "check:unpack": "node scripts/check-unpack.js"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -95,8 +96,41 @@
       ]
     },
     "asarUnpack": [
-      "node_modules/@huggingface/transformers/**",
-      "node_modules/onnxruntime-node/**"
+      "node_modules/@huggingface/**",
+      "node_modules/@protobufjs/**",
+      "node_modules/@types/**",
+      "node_modules/adm-zip/**",
+      "node_modules/boolean/**",
+      "node_modules/define-data-property/**",
+      "node_modules/define-properties/**",
+      "node_modules/detect-libc/**",
+      "node_modules/detect-node/**",
+      "node_modules/es-define-property/**",
+      "node_modules/es-errors/**",
+      "node_modules/es6-error/**",
+      "node_modules/escape-string-regexp/**",
+      "node_modules/flatbuffers/**",
+      "node_modules/global-agent/**",
+      "node_modules/globalthis/**",
+      "node_modules/gopd/**",
+      "node_modules/guid-typescript/**",
+      "node_modules/has-property-descriptors/**",
+      "node_modules/json-stringify-safe/**",
+      "node_modules/long/**",
+      "node_modules/matcher/**",
+      "node_modules/object-keys/**",
+      "node_modules/onnxruntime-common/**",
+      "node_modules/onnxruntime-node/**",
+      "node_modules/onnxruntime-web/**",
+      "node_modules/platform/**",
+      "node_modules/protobufjs/**",
+      "node_modules/roarr/**",
+      "node_modules/semver/**",
+      "node_modules/semver-compare/**",
+      "node_modules/serialize-error/**",
+      "node_modules/sprintf-js/**",
+      "node_modules/type-fest/**",
+      "node_modules/undici-types/**"
     ]
   }
 }

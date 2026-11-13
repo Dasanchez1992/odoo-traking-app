@@ -30,6 +30,9 @@ jobs:
       - name: Comprobar los canales IPC
         run: npm run check:ipc
 
+      - name: Comprobar el empaquetado de Whisper
+        run: npm run check:unpack
+
       - name: Compilar la interfaz
         run: npm run build
 

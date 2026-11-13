@@ -84,6 +84,13 @@ capturar también a los demás participantes) y escribe el `.webm` a disco por t
 la reunión, de modo que un cierre inesperado no se lleva la sesión. El audio y su ficha viven en
 `grabaciones/` dentro de la carpeta de datos de la app: nunca salen del equipo.
 
+**Empaquetado:** el módulo de Whisper y todo su árbol de dependencias van **fuera del asar**
+(`build.asarUnpack`), y se carga por ruta absoluta y no por nombre. El cargador de módulos ES no
+sabe mirar dentro del asar ni cruzar entre `app.asar` y `app.asar.unpacked`, así que con una sola
+pieza del otro lado la transcripción falla —solo en la app instalada, nunca en desarrollo— con un
+`ERR_MODULE_NOT_FOUND`. `npm run check:unpack` recalcula ese árbol y rompe el build si algo se
+queda dentro; corre en CI y antes de publicar.
+
 La transcripción corre en local con Whisper vía `@huggingface/transformers`: la ventana decodifica
 el audio y lo remuestrea a 16 kHz mono, y el proceso principal ejecuta el modelo, que se descarga
 una sola vez a `modelos-whisper/`. El modelo se elige en Configuración (`tiny` 42 MB, `base` 77 MB

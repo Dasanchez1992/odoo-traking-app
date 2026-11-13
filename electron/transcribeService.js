@@ -1,6 +1,7 @@
 const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 // Transcripción en el propio equipo con Whisper. El modelo se descarga una sola vez y queda
 // cacheado en la carpeta de datos de la app; el audio nunca sale de aquí.
@@ -14,6 +15,26 @@ const MUESTREO = 16000;
 
 let pipelinePromesa = null;
 let modeloCargado = null;
+
+/**
+ * Ruta del módulo de Whisper.
+ *
+ * En la app instalada el código vive dentro de `app.asar` y las dependencias pesadas fuera, en
+ * `app.asar.unpacked`. El cargador de módulos ES no entiende el asar ni sabe cruzar de un lado
+ * al otro, así que pedirle «@huggingface/transformers» por su nombre falla con
+ * ERR_MODULE_NOT_FOUND: hay que darle la ruta exacta del archivo.
+ */
+function rutaDelModulo() {
+  const paquete = path.join(__dirname, '..', 'node_modules', '@huggingface', 'transformers');
+  const dentroDelAsar = `app.asar${path.sep}`;
+  const real = paquete.includes(dentroDelAsar)
+    ? paquete.replace(dentroDelAsar, `app.asar.unpacked${path.sep}`)
+    : paquete;
+
+  const entrada = path.join(real, 'dist', 'transformers.node.mjs');
+  // En desarrollo (sin empaquetar) la ruta también existe; si no estuviera, queda el nombre.
+  return fs.existsSync(entrada) ? pathToFileURL(entrada).href : '@huggingface/transformers';
+}
 
 function cacheDir() {
   const dir = path.join(app.getPath('userData'), 'modelos-whisper');
@@ -32,7 +53,7 @@ async function getPipeline(modelo, onProgress) {
   modeloCargado = nombre;
   pipelinePromesa = (async () => {
     // transformers.js es ESM; desde CommonJS hay que importarlo de forma dinámica.
-    const { pipeline, env } = await import('@huggingface/transformers');
+    const { pipeline, env } = await import(rutaDelModulo());
     env.cacheDir = cacheDir();
     env.allowRemoteModels = true;
 
@@ -132,4 +153,4 @@ async function run(token, { modelo = 'base', language = 'spanish', onProgress = 
   }
 }
 
-module.exports = { begin, pushPcm, run, MODELOS, MUESTREO };
+module.exports = { begin, pushPcm, run, MODELOS, MUESTREO, rutaDelModulo };

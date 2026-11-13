@@ -108,6 +108,11 @@ jobs:
       - name: Comprobar los canales IPC
         run: npm run check:ipc
 
+      # Si una dependencia de Whisper se queda dentro del asar, la transcripción solo falla
+      # en la app instalada: mejor que lo descubra el build.
+      - name: Comprobar el empaquetado de Whisper
+        run: npm run check:unpack
+
       - name: Compilar la interfaz
         run: npm run build
 
